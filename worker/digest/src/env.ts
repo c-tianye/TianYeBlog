@@ -10,7 +10,7 @@ export interface Env {
 	/** Token required by the manual `POST /run` endpoint (secret) */
 	TRIGGER_TOKEN?: string;
 
-	/** Gemini model id, defaults to gemini-2.5-flash */
+	/** Gemini model id, defaults to gemini-3.6-flash (falls back automatically if retired) */
 	GEMINI_MODEL?: string;
 	/** `owner/repo` of the blog, defaults to c-tianye/TianYeBlog */
 	BLOG_REPO?: string;

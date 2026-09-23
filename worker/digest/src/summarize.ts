@@ -14,7 +14,13 @@ export interface SummariseInput {
 	sources: { source: Source; items: SourceItem[] }[];
 }
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
+/**
+ * Tried in order when the configured model is not usable for this API key.
+ * Google retires models for new accounts ("no longer available to new users" -> HTTP 404),
+ * so a deprecated default should not take the whole pipeline down.
+ */
+const MODEL_FALLBACKS = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-flash"];
 const MAX_DESCRIPTION = 200;
 const MAX_ATTEMPTS = 3;
 
@@ -69,7 +75,34 @@ export async function summarise(env: Env, input: SummariseInput): Promise<Summar
 		throw new Error("GEMINI_API_KEY is not set (run: npx wrangler secret put GEMINI_API_KEY)");
 	}
 
-	const model = env.GEMINI_MODEL ?? DEFAULT_MODEL;
+	const candidates = [...new Set([env.GEMINI_MODEL ?? DEFAULT_MODEL, ...MODEL_FALLBACKS])];
+	let lastError: unknown;
+
+	for (const model of candidates) {
+		try {
+			const summary = await callGemini(apiKey, model, input);
+			console.log(`summarise: used model ${model}`);
+			return summary;
+		} catch (error) {
+			lastError = error;
+			if (isModelUnavailable(error) && model !== candidates.at(-1)) {
+				console.warn(`summarise: model ${model} unavailable, trying the next fallback`);
+				continue;
+			}
+			throw error;
+		}
+	}
+
+	throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+/** True when the model does not exist / is not enabled for this key. */
+function isModelUnavailable(error: unknown): boolean {
+	const message = (error as Error).message ?? "";
+	return message.includes("NOT_FOUND") || message.includes("no longer available");
+}
+
+async function callGemini(apiKey: string, model: string, input: SummariseInput): Promise<Summary> {
 	const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 	const body = {
 		systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
@@ -94,11 +127,11 @@ export async function summarise(env: Env, input: SummariseInput): Promise<Summar
 			});
 
 			if (response.status === 429 || response.status >= 500) {
-				throw new Error(`Gemini ${response.status}: ${(await response.text()).slice(0, 300)}`);
+				throw new Error(`Gemini[${model}] ${response.status}: ${(await response.text()).slice(0, 300)}`);
 			}
 			if (!response.ok) {
 				throw new Error(
-					`Gemini ${response.status}: ${(await response.text()).slice(0, 500)} — giving up`,
+					`Gemini[${model}] ${response.status}: ${(await response.text()).slice(0, 500)} — giving up`,
 				);
 			}
 

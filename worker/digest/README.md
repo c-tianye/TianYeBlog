@@ -47,7 +47,7 @@ Cron Trigger (Worker)
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | 换成 `gemini-2.5-pro` 可获得更好的摘要质量 |
+| `GEMINI_MODEL` | `gemini-3.6-flash` | 换更强的模型可提升摘要质量；模型被下线时会自动依次回退到 `gemini-flash-latest`、`gemini-2.5-flash` 并在日志里说明 |
 | `BLOG_REPO` / `BLOG_BRANCH` | `c-tianye/TianYeBlog` / `main` | 提交目标 |
 | `SITE_URL` | `https://blog.luxstarspace.com` | 用于生成正文里的中英互链 |
 | `REDDIT_SUBS` | `technology` | 逗号分隔，如 `technology,programming` |
