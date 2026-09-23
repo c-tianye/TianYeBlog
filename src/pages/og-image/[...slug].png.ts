@@ -41,7 +41,7 @@ export async function GET(context: APIContext) {
 			month: "long",
 			weekday: "long",
 		});
-		const svg = await satori(ogMarkup(title, postDate), ogOptions);
+		const svg = await satori(ogMarkup(title, postDate) as never, ogOptions);
 		pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
 		writeToCache(title, pubDate, pngBuffer);
 	}

@@ -6,7 +6,7 @@ import type {} from "mdast-util-to-hast";
 export function h(el: string, attrs: Properties = {}, children: unknown[] = []): P {
 	const { tagName, properties } = _h(el, attrs);
 	return {
-		children: children as P['children'],
+		children: children as P["children"],
 		data: { hName: tagName, hProperties: properties },
 		type: "paragraph",
 	};
