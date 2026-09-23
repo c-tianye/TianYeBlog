@@ -47,7 +47,7 @@ Cron Trigger (Worker)
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | 模型被下线（404/NOT_FOUND）时自动依次回退 `gemini-3.6-flash` → `gemini-3.5-flash-lite`，并在日志里说明实际用了哪个 |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | 不可用时自动回退：`3.6-flash` → `3.5-flash-lite` → `2.5-pro` → `2.5-flash`。触发回退的情况包括模型被下线（404 NOT_FOUND）、**模型过载（503 UNAVAILABLE / high demand）**、配额用尽（429 RESOURCE_EXHAUSTED）；日志会写明实际用了哪个模型 |
 | `BLOG_REPO` / `BLOG_BRANCH` | `c-tianye/TianYeBlog` / `main` | 提交目标 |
 | `SITE_URL` | `https://blog.luxstarspace.com` | 用于生成正文里的中英互链 |
 | `REDDIT_SUBS` | `technology` | 逗号分隔，如 `technology,programming` |

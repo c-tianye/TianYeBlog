@@ -27,6 +27,9 @@ export const MODEL_FALLBACKS = [
 	"gemini-3.8-flash",
 	"gemini-3.6-flash",
 	"gemini-3.5-flash-lite",
+	// last resort: older generations that ListModels still advertises for some keys
+	"gemini-2.5-pro",
+	"gemini-2.5-flash",
 ];
 const MAX_DESCRIPTION = 200;
 const MAX_ATTEMPTS = 3;
@@ -92,8 +95,10 @@ export async function summarise(env: Env, input: SummariseInput): Promise<Summar
 			return summary;
 		} catch (error) {
 			lastError = error;
-			if (isModelUnavailable(error) && model !== candidates.at(-1)) {
-				console.warn(`summarise: model ${model} unavailable, trying the next fallback`);
+			if (shouldTryNextModel(error) && model !== candidates.at(-1)) {
+				console.warn(
+					`summarise: ${model} unusable (${(error as Error).message.slice(0, 120)}), trying the next fallback`,
+				);
 				continue;
 			}
 			throw error;
@@ -103,10 +108,25 @@ export async function summarise(env: Env, input: SummariseInput): Promise<Summar
 	throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
-/** True when the model does not exist / is not enabled for this key. */
-export function isModelUnavailable(error: unknown): boolean {
+/**
+ * True when trying the next model in the chain is the right move:
+ * - the model was retired / is not enabled for this key (404 NOT_FOUND)
+ * - the model is overloaded (503 UNAVAILABLE "high demand")
+ * - this model's quota is used up (429 RESOURCE_EXHAUSTED)
+ *
+ * A bad key (400) or a malformed request must fail immediately instead.
+ */
+export function shouldTryNextModel(error: unknown): boolean {
 	const message = (error as Error).message ?? "";
-	return message.includes("NOT_FOUND") || message.includes("no longer available");
+	return [
+		"NOT_FOUND",
+		"no longer available",
+		"UNAVAILABLE",
+		"high demand",
+		"overloaded",
+		"RESOURCE_EXHAUSTED",
+		"quota",
+	].some((needle) => message.toLowerCase().includes(needle.toLowerCase()));
 }
 
 async function callGemini(apiKey: string, model: string, input: SummariseInput): Promise<Summary> {
@@ -148,7 +168,9 @@ async function callGemini(apiKey: string, model: string, input: SummariseInput):
 			const message = (error as Error).message;
 			if (message.includes("giving up") || attempt === MAX_ATTEMPTS) break;
 			console.warn(`summarise: attempt ${attempt} failed (${message}), retrying`);
-			await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+			// 503 capacity spikes usually clear in seconds, quota errors do not
+			const backoffMs = message.includes("503") ? attempt * 3000 : attempt * 1500;
+			await new Promise((resolve) => setTimeout(resolve, backoffMs));
 		}
 	}
 

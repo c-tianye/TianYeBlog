@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_MODEL, MODEL_FALLBACKS, isModelUnavailable } from "../src/summarize.ts";
+import { DEFAULT_MODEL, MODEL_FALLBACKS, shouldTryNextModel } from "../src/summarize.ts";
 
 /**
  * Guards against the failure mode we already hit once: a hand-written model id that does not
@@ -16,16 +16,23 @@ test("model ids follow Google's naming scheme", () => {
 	);
 });
 
-test("retired or unknown models are detected, other errors are not", () => {
+test("falls back for retired, overloaded and quota-exhausted models", () => {
+	// retired model for this account
+	assert.equal(shouldTryNextModel(new Error('404: {"status":"NOT_FOUND"}')), true);
+	assert.equal(shouldTryNextModel(new Error("404: no longer available to new users")), true);
+	// the real failure we hit: 3.8-flash existed but was capacity constrained
 	assert.equal(
-		isModelUnavailable(new Error('Gemini[gemini-2.5-flash] 404: {"status":"NOT_FOUND"}')),
+		shouldTryNextModel(
+			new Error('Gemini[gemini-3.8-flash] 503: {"status":"UNAVAILABLE","message":"high demand"}'),
+		),
 		true,
 	);
-	assert.equal(
-		isModelUnavailable(new Error("Gemini[gemini-2.5-flash] 404: no longer available to new users")),
-		true,
-	);
-	// a bad key or a quota error must fail immediately instead of walking the fallback chain
-	assert.equal(isModelUnavailable(new Error("Gemini[gemini-3.8-flash] 400: API key not valid")), false);
-	assert.equal(isModelUnavailable(new Error('Gemini[gemini-3.8-flash] 429: rate limited')), false);
+	// per-model free tier quota
+	assert.equal(shouldTryNextModel(new Error('429: {"status":"RESOURCE_EXHAUSTED"}')), true);
+});
+
+test("does not walk the fallback chain for auth or request errors", () => {
+	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: API key not valid")), false);
+	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 403: permission denied")), false);
+	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: invalid JSON payload")), false);
 });
