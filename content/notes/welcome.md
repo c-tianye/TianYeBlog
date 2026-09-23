@@ -1,9 +1,7 @@
 ---
-title: Hello, Welcome
-description: An introduction to using the note feature in Astro Cactus
-publishDate: "2024-10-14T11:23:00Z"
+title: "关于笔记"
+description: "短笔记集合的说明。"
+publishDate: "2025-01-01T00:00:00Z"
 ---
 
-Hi, Hello. This is an example note feature included with Astro Cactus 🌵
-
-They're for shorter, more concise posts that you'd like to share. They generally don't include headings, but hey, it's entirely up to you!
+笔记用来存放还不足以写成完整文章、但有记录价值的片段。字段只需要 `title` 和 `publishDate`，比文章更轻量。
