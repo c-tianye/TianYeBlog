@@ -1,5 +1,5 @@
 {
-	"name": "astro-cactus",
+	"name": "tianye-blog",
 	"type": "module",
 	"version": "8.3.0",
 	"private": false,
@@ -53,6 +53,7 @@
 		"prettier-plugin-astro": "1.0.0",
 		"prettier-plugin-tailwindcss": "^0.8.1",
 		"reading-time": "^1.5.0",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"wrangler": "^4.136.3"
 	}
 }
