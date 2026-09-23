@@ -4,7 +4,7 @@ import { groupConfig, groupFromCron, groupList } from "./groups";
 import { buildPost, buildRawSummary, slugFor } from "./render";
 import { sources } from "./sources";
 import { freshItems, getRuns, loadSeen, recordRun, rememberSeen } from "./state";
-import { summarise } from "./summarize";
+import { DEFAULT_MODEL, MODEL_FALLBACKS, summarise } from "./summarize";
 import { formatUtc, hoursAgo } from "./time";
 import { type Group, type RunReport, type SourceItem, SourceSkipped } from "./types";
 
@@ -53,6 +53,48 @@ export default {
 					name: source.names.zh,
 					reason: source.disabledReason,
 				})),
+			});
+		}
+
+		// Lists the models this API key can actually use — avoids guessing model ids after a
+		// Gemini release retires or renames something.
+		if (url.pathname === "/models") {
+			if (!authorized) {
+				return json({ error: "unauthorized: send x-digest-token", ok: false }, 401);
+			}
+			if (!env.GEMINI_API_KEY) {
+				return json({ error: "GEMINI_API_KEY is not set", ok: false }, 400);
+			}
+
+			const response = await fetch(
+				"https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+				{ headers: { "x-goog-api-key": env.GEMINI_API_KEY } },
+			);
+			const payload = (await response.json()) as {
+				error?: { message?: string };
+				models?: {
+					displayName?: string;
+					name?: string;
+					supportedGenerationMethods?: string[];
+				}[];
+			};
+
+			const models = (payload.models ?? [])
+				.map((model) => ({
+					displayName: model.displayName,
+					generateContent: (model.supportedGenerationMethods ?? []).includes("generateContent"),
+					name: (model.name ?? "").replace(/^models\//, ""),
+				}))
+				.filter((model) => model.name && model.generateContent);
+
+			return json({
+				configured: env.GEMINI_MODEL ?? DEFAULT_MODEL,
+				count: models.length,
+				error: payload.error?.message,
+				fallbacks: MODEL_FALLBACKS,
+				models,
+				ok: response.ok,
+				status: response.status,
 			});
 		}
 

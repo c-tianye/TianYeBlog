@@ -47,7 +47,7 @@ Cron Trigger (Worker)
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `GEMINI_MODEL` | `gemini-3.6-flash` | 换更强的模型可提升摘要质量；模型被下线时会自动依次回退到 `gemini-flash-latest`、`gemini-2.5-flash` 并在日志里说明 |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | 模型被下线（404/NOT_FOUND）时自动依次回退 `gemini-3.6-flash` → `gemini-3.5-flash-lite`，并在日志里说明实际用了哪个 |
 | `BLOG_REPO` / `BLOG_BRANCH` | `c-tianye/TianYeBlog` / `main` | 提交目标 |
 | `SITE_URL` | `https://blog.luxstarspace.com` | 用于生成正文里的中英互链 |
 | `REDDIT_SUBS` | `technology` | 逗号分隔，如 `technology,programming` |
@@ -75,7 +75,29 @@ npx wrangler secret put REDDIT_CLIENT_SECRET
 
 没配密钥时：`GITHUB_TOKEN` 缺失 → 不提交（日志会说明）；`GEMINI_API_KEY` 缺失 → 不生成摘要，整轮跳过（除非 `DIGEST_RAW_FALLBACK=true`）。
 
-### 3. KV
+### 3. 模型核对
+
+模型 ID 必须与官方列表一致（`gemini-3.8-flash-lite` 这种名字**不存在**）。核对方式：
+
+```bash
+curl -s -H "x-digest-token: $TRIGGER_TOKEN" \
+  https://tianye-digest.<subdomain>.workers.dev/models | python3 -m json.tool
+```
+
+返回你的 key 实际可用（支持 `generateContent`）的模型列表，以及当前配置与回退链。
+
+截至本次核对，官方可用（见 <https://ai.google.dev/gemini-api/docs/models>）：
+
+| 模型 ID | 说明 |
+| --- | --- |
+| `gemini-3.8-flash` | 当前最新 Flash（默认值） |
+| `gemini-3.7-flash` / `gemini-3.6-flash` | 上一代 Flash |
+| `gemini-3.5-flash-lite` | 最新 Flash-Lite（Lite 线止于 3.5） |
+| `gemini-3.1-flash-lite` / `gemini-2.5-flash-lite` | 更早的 Lite，新账号可能不可用 |
+
+`test/summarize.test.ts` 会校验默认值与回退链里的 ID 符合命名规范且默认值在回退链中。
+
+### 4. KV
 
 `DIGEST_STATE`（id 见 `wrangler.jsonc`）保存两样东西：
 
@@ -89,7 +111,7 @@ npx wrangler kv namespace create DIGEST_STATE
 # 把输出的 id 填进 wrangler.jsonc
 ```
 
-### 4. 部署
+### 5. 部署
 
 推送到 `main` 且改动 `worker/digest/**` 时，`.github/workflows/deploy-digest.yml` 会自动 typecheck + test + `wrangler deploy`；也可以本地手动：
 
@@ -131,6 +153,7 @@ npx wrangler tail                                  # 实时日志
 curl https://tianye-digest.<subdomain>.workers.dev/status   # 最近运行报告
 ```
 
+- 核对可用模型：`GET /models`（需 token），换模型时先查再改
 - 想停掉抓取：把 `DIGEST_ENABLED` 设为 `"false"` 后重新部署（不必删密钥）
 - 想去重失败重来某条：删 KV 里的 `seen:<sourceId>`，或用 `force=1` 手动跑一轮
 - 想重新生成当天的日报：先删仓库里对应的 `content/posts/digest-*.md`

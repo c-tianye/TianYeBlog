@@ -14,13 +14,20 @@ export interface SummariseInput {
 	sources: { source: Source; items: SourceItem[] }[];
 }
 
-const DEFAULT_MODEL = "gemini-3.6-flash";
+export const DEFAULT_MODEL = "gemini-3.8-flash";
 /**
  * Tried in order when the configured model is not usable for this API key.
  * Google retires models for new accounts ("no longer available to new users" -> HTTP 404),
  * so a deprecated default should not take the whole pipeline down.
+ *
+ * Every id here must exist in https://ai.google.dev/gemini-api/docs/models — check with
+ * `GET /models` (token protected) before adding one, and keep test/summarize.test.ts green.
  */
-const MODEL_FALLBACKS = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+export const MODEL_FALLBACKS = [
+	"gemini-3.8-flash",
+	"gemini-3.6-flash",
+	"gemini-3.5-flash-lite",
+];
 const MAX_DESCRIPTION = 200;
 const MAX_ATTEMPTS = 3;
 
@@ -97,7 +104,7 @@ export async function summarise(env: Env, input: SummariseInput): Promise<Summar
 }
 
 /** True when the model does not exist / is not enabled for this key. */
-function isModelUnavailable(error: unknown): boolean {
+export function isModelUnavailable(error: unknown): boolean {
 	const message = (error as Error).message ?? "";
 	return message.includes("NOT_FOUND") || message.includes("no longer available");
 }
