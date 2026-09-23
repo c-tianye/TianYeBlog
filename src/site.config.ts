@@ -1,4 +1,5 @@
 import type { AstroExpressiveCodeOptions } from "astro-expressive-code";
+import type { Translations } from "@/i18n/ui";
 import type { SiteConfig } from "@/types";
 
 export const siteConfig: SiteConfig = {
@@ -10,6 +11,7 @@ export const siteConfig: SiteConfig = {
 		- The link value found in src/components/layout/Header.astro L:35
 		- In the footer found in src/components/layout/Footer.astro L:12
 	*/
+	// The default locale is Chinese; per-locale titles/descriptions live in src/i18n/ui.ts
 	title: "天业 Blog",
 	// Used as both a meta property (src/components/BaseHead.astro L:31 + L:49) & the generated satori png (src/pages/og-image/[slug].png.ts)
 	author: "c-tianye",
@@ -31,23 +33,27 @@ export const siteConfig: SiteConfig = {
 	},
 };
 
-// Used to generate links in both the Header & Footer.
-export const menuLinks: { path: string; title: string }[] = [
+/**
+ * Used to generate links in both the Header & Footer.
+ * Paths are locale-agnostic: the `/en` prefix is added automatically on English pages,
+ * and titles come from the dictionary in src/i18n/ui.ts.
+ */
+export const menuLinks: { path: string; titleKey: keyof Translations }[] = [
 	{
 		path: "/",
-		title: "Home",
+		titleKey: "nav.home",
 	},
 	{
 		path: "/about/",
-		title: "About",
+		titleKey: "nav.about",
 	},
 	{
 		path: "/posts/",
-		title: "Blog",
+		titleKey: "nav.posts",
 	},
 	{
 		path: "/notes/",
-		title: "Notes",
+		titleKey: "nav.notes",
 	},
 ];
 

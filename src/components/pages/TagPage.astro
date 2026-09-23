@@ -1,0 +1,77 @@
+---
+import { type CollectionEntry, render } from "astro:content";
+import type { Page } from "astro";
+import { Icon } from "astro-icon/components";
+import PostPreview from "@/components/blog/PostPreview.astro";
+import Pagination from "@/components/Paginator.astro";
+import { type Lang, localizePath, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+import type { PostEntry, TagEntry } from "@/types";
+
+interface Props {
+	lang: Lang;
+	page: Page<PostEntry>;
+	tag: string;
+	tagMeta?: TagEntry | undefined;
+}
+
+const { lang, page, tag, tagMeta } = Astro.props;
+const t = useTranslations(lang);
+
+const TagContent = tagMeta ? (await render(tagMeta as CollectionEntry<"tag">)).Content : null;
+const title = tagMeta?.data.title ?? t("tags.postsAbout")(tag);
+
+const meta = {
+	description: tagMeta?.data.description ?? t("tags.postsAbout")(tag),
+	title,
+};
+
+// Tag slugs differ per locale ("随笔" vs "essay"), so the language switcher relies on the
+// `translation` field of the tag content file instead of swapping the URL prefix.
+const altLangHref = tagMeta?.data.translation ? `/tags/${tagMeta.data.translation}/` : undefined;
+
+const paginationProps = {
+	...(page.url.prev && {
+		prevUrl: {
+			text: t("tags.prev"),
+			url: page.url.prev,
+		},
+	}),
+	...(page.url.next && {
+		nextUrl: {
+			text: t("tags.next"),
+			url: page.url.next,
+		},
+	}),
+};
+---
+
+<PageLayout altLangHref={altLangHref} meta={meta}>
+	<nav class="mb-8" aria-label="Breadcrumbs">
+		<ul class="flex items-center">
+			<li class="flex items-center">
+				<a class="text-accent" href={localizePath("/tags/", lang)}>
+					{t("tags.title")}
+				</a>
+				<Icon aria-hidden="true" name="mdi:chevron-right" class="mx-1.5" />
+			</li>
+			<li aria-current="page" class="">
+				<span aria-hidden="true">#</span>
+				{tag}
+			</li>
+		</ul>
+	</nav>
+	<h1 class="title capitalize">{title}</h1>
+	<div class="prose prose-sm prose-cactus mb-16 max-w-none">
+		{tagMeta?.data.description && <p>{tagMeta.data.description}</p>}
+		{TagContent && <TagContent />}
+	</div>
+	<ul class="space-y-4">
+		{page.data.map((p) => (
+			<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
+				<PostPreview as="h2" post={p} />
+			</li>
+		))}
+	</ul>
+	<Pagination {...paginationProps} />
+</PageLayout>

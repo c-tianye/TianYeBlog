@@ -1,0 +1,48 @@
+---
+import { getAlternatePath, getLangFromUrl, htmlLang, useTranslations } from "@/i18n/ui";
+
+interface Props {
+	/** Locale-agnostic path (no `/en` prefix) of the same page in the other locale, used when it cannot be derived from the URL */
+	altHref?: string | undefined;
+	class?: string | undefined;
+}
+
+const { altHref, class: className } = Astro.props;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const target = lang === "en" ? "zh" : "en";
+const href = getAlternatePath(Astro.url, altHref);
+---
+
+<a
+	aria-label={t("lang.ariaLabel")}
+	class:list={[
+		"hover:text-accent inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 font-semibold",
+		className,
+	]}
+	href={href}
+	hreflang={htmlLang[target]}
+	rel="alternate"
+	title={t("lang.ariaLabel")}
+>
+	<svg
+		aria-hidden="true"
+		class="h-6 w-6"
+		fill="none"
+		focusable="false"
+		stroke="currentColor"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		stroke-width="1.5"
+		viewBox="0 0 24 24"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<path d="M0 0h24v24H0z" fill="none" stroke="none"></path>
+		<path d="M4 5h7"></path>
+		<path d="M9 3v2c0 4.418 -2.239 8 -5 8"></path>
+		<path d="M5 9c0 2.144 2.952 3.908 6.7 4"></path>
+		<path d="M12 20l4 -9l4 9"></path>
+		<path d="M19.1 18h-6.2"></path>
+	</svg>
+	<span>{t("lang.other")}</span>
+</a>

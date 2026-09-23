@@ -22,13 +22,26 @@ import { expressiveCodeOptions, siteConfig } from "./src/site.config";
 // https://astro.build/config
 export default defineConfig({
 	site: siteConfig.url,
+	// Chinese is served from the root, English from /en/. See src/i18n/ui.ts
+	i18n: {
+		defaultLocale: "zh",
+		locales: ["zh", "en"],
+		routing: {
+			prefixDefaultLocale: false,
+		},
+	},
 	image: {
 		domains: ["webmention.io"],
 	},
 	integrations: [
 		expressiveCode(expressiveCodeOptions),
 		icon(),
-		sitemap(),
+		sitemap({
+			i18n: {
+				defaultLocale: "zh",
+				locales: { zh: "zh-CN", en: "en-US" },
+			},
+		}),
 		mdx(),
 		robotsTxt(),
 		webmanifest({

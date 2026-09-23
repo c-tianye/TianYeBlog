@@ -1,0 +1,23 @@
+---
+import type { GetStaticPaths } from "astro";
+import NotePage from "@/components/pages/NotePage.astro";
+import { getAllNotes } from "@/data/post";
+import type { NoteEntry } from "@/types";
+
+// if you're using an adaptor in SSR mode, getStaticPaths wont work -> https://docs.astro.build/en/guides/routing/#modifying-the-slug-example-for-ssr
+export const getStaticPaths = (async () => {
+	const allNotes = await getAllNotes("en");
+	return allNotes.map((note) => ({
+		params: { slug: note.id },
+		props: { note },
+	}));
+}) satisfies GetStaticPaths;
+
+interface Props {
+	note: NoteEntry;
+}
+
+const { note } = Astro.props as Props;
+---
+
+<NotePage lang="en" note={note} />

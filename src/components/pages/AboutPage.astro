@@ -1,0 +1,79 @@
+---
+import SocialList from "@/components/SocialList.astro";
+import { type Lang, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const meta = {
+	description: t("about.description"),
+	title: t("about.title"),
+};
+---
+
+<PageLayout meta={meta}>
+	<h1 class="title mb-12">{t("about.heading")}</h1>
+	<div class="prose prose-sm prose-cactus max-w-none">
+		{lang === "en" ? (
+			<>
+				<p>
+					Hi, I'm c-tianye. This is my personal engineering blog, where I write about the tools I
+					use, the problems I run into and the way I try to think about both.
+				</p>
+				<p>
+					A typical post starts from something concrete: a toolchain that needed configuring, a bug
+					that took longer than it should have, or a design decision that only made sense after
+					looking at the trade-offs. The goal is reproducibility — complete commands, configuration
+					and results, so the outcome can be verified rather than trusted.
+				</p>
+				<p>
+					The blog itself is a static site built with{" "}
+					<a href="https://astro.build" rel="noreferrer" target="_blank">
+						Astro
+					</a>{" "}
+					on the{" "}
+					<a
+						href="https://github.com/chrismwilliams/astro-theme-cactus"
+						rel="noreferrer"
+						target="_blank"
+					>
+						Astro Cactus
+					</a>{" "}
+					theme, styled with Tailwind CSS, indexed for search with Pagefind, and deployed to
+					Cloudflare Workers as static assets. Posts live in <code>content/posts/</code>, short
+					notes in <code>content/notes/</code>, and English content mirrors the Chinese originals
+					under <code>content/en/</code>. Source code and deployment workflow are on GitHub.
+				</p>
+				<p>
+					I write in Chinese first and keep an English version alongside it; the language switcher
+					in the header moves between the two.
+				</p>
+			</>
+		) : (
+			<>
+				<p>
+					你好，我是
+					c-tianye。这里是我的个人技术博客，用来记录我使用的工具、遇到的问题，以及对这些问题的思考方式。
+				</p>
+				<p>
+					一篇文章通常从一个具体问题开始：需要配置的工具链、排查时间超出预期的
+					bug，或者是看清取舍之后才成立的设计决策。写作的目标是可复现——给出完整的命令、配置和结果，让结论可以被验证，而不只是被相信。
+				</p>
+				<p>
+					博客本身是用 Astro 配合 Astro Cactus 主题构建的静态站点：Tailwind CSS 负责样式，Pagefind
+					提供站内搜索，产物以静态资源的形式部署在 Cloudflare Workers 上。文章放在
+					<code>content/posts/</code>，短笔记放在 <code>content/notes/</code>
+					，英文内容与中文原文一一对应地放在
+					<code>content/en/</code> 下，源码与部署流程都在 GitHub 上。
+				</p>
+				<p>我先用中文写作，同时维护一份英文版本，页头的语言切换按钮可以在两者之间跳转。</p>
+			</>
+		)}
+		<SocialList />
+	</div>
+</PageLayout>

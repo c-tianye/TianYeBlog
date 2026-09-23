@@ -1,5 +1,6 @@
 ---
 import type { MarkdownHeading } from "astro";
+import { getLangFromUrl, useTranslations } from "@/i18n/ui";
 import { generateToc } from "@/utils/generateToc";
 import TOCHeading from "./TOCHeading.astro";
 
@@ -10,13 +11,18 @@ interface Props {
 const { headings } = Astro.props;
 
 const toc = generateToc(headings);
+const t = useTranslations(getLangFromUrl(Astro.url));
 ---
 
 <details open class="lg:sticky lg:top-12 lg:order-2 lg:-me-32 lg:basis-64">
-	<summary class="title hover:marker:text-accent cursor-pointer text-lg">Table of Contents</summary>
+	<summary class="title hover:marker:text-accent cursor-pointer text-lg">
+		{t("common.tableOfContents")}
+	</summary>
 	<nav class="ms-4 lg:w-full">
 		<ol class="mt-4">
-			{toc.map((heading) => <TOCHeading heading={heading} />)}
+			{toc.map((heading) => (
+				<TOCHeading heading={heading} />
+			))}
 		</ol>
 	</nav>
 </details>

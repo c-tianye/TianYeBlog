@@ -1,0 +1,35 @@
+---
+import type { GetStaticPaths, Page } from "astro";
+import PostsPage from "@/components/pages/PostsPage.astro";
+import { getAllPosts, getUniqueTags } from "@/data/post";
+import type { PostEntry } from "@/types";
+import { collectionDateSort } from "@/utils/date";
+
+export const getStaticPaths = (async ({ paginate }) => {
+	const MAX_POSTS_PER_PAGE = 10;
+	const MAX_TAGS = 7;
+	const MAX_PINNED_POSTS = 3;
+	const allPosts = await getAllPosts("en");
+	const allPostsByDate = allPosts.sort(collectionDateSort);
+	const uniqueTags = getUniqueTags(allPosts).slice(0, MAX_TAGS);
+	const pinnedPosts = allPostsByDate
+		.values()
+		.filter((p) => p.data.pinned)
+		.take(MAX_PINNED_POSTS)
+		.toArray();
+	return paginate(allPostsByDate, {
+		pageSize: MAX_POSTS_PER_PAGE,
+		props: { uniqueTags, pinnedPosts },
+	});
+}) satisfies GetStaticPaths;
+
+interface Props {
+	page: Page<PostEntry>;
+	uniqueTags: string[];
+	pinnedPosts: PostEntry[];
+}
+
+const { page, uniqueTags, pinnedPosts } = Astro.props as Props;
+---
+
+<PostsPage lang="en" page={page} pinnedPosts={pinnedPosts} uniqueTags={uniqueTags} />

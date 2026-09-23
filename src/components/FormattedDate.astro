@@ -1,16 +1,22 @@
 ---
 import type { HTMLAttributes } from "astro/types";
+import { getLangFromUrl } from "@/i18n/ui";
 import { getFormattedDate } from "@/utils/date";
 
 type Props = HTMLAttributes<"time"> & {
 	date: Date;
 	dateTimeOptions?: Intl.DateTimeFormatOptions;
+	/** Locale to format the date in, defaults to the language of the current URL */
+	lang?: "zh" | "en";
 };
 
-const { date, dateTimeOptions, ...attrs } = Astro.props;
+const { date, dateTimeOptions, lang, ...attrs } = Astro.props;
 
-const postDate = getFormattedDate(date, dateTimeOptions);
+const dateLang = lang ?? getLangFromUrl(Astro.url);
+const postDate = getFormattedDate(date, dateTimeOptions, dateLang);
 const ISO = date.toISOString();
 ---
 
-<time datetime={ISO} title={ISO} {...attrs}>{postDate}</time>
+<time datetime={ISO} title={ISO} {...attrs}>
+	{postDate}
+</time>

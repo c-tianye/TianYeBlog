@@ -1,0 +1,26 @@
+---
+import { type CollectionEntry, render } from "astro:content";
+import { getAllPosts } from "@/data/post";
+import type { Lang } from "@/i18n/ui";
+import PostLayout from "@/layouts/BlogPost.astro";
+import type { PostEntry } from "@/types";
+
+interface Props {
+	lang: Lang;
+	post: PostEntry;
+}
+
+const { lang, post } = Astro.props;
+const otherLang: Lang = lang === "en" ? "zh" : "en";
+const otherPosts = await getAllPosts(otherLang);
+
+// Posts keep the same slug in both locales. If the other locale has no translation of this
+// post, send the language switcher to that locale's post index instead of a 404.
+const altLangHref = otherPosts.some((other) => other.id === post.id) ? undefined : "/posts/";
+
+const { Content } = await render(post as CollectionEntry<"post">);
+---
+
+<PostLayout altLangHref={altLangHref} post={post}>
+	<Content />
+</PostLayout>

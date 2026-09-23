@@ -4,28 +4,39 @@ import Footer from "@/components/layout/Footer.astro";
 import Header from "@/components/layout/Header.astro";
 import SkipLink from "@/components/SkipLink.astro";
 import ThemeProvider from "@/components/ThemeProvider.astro";
-import { siteConfig } from "@/site.config";
+import { getLangFromUrl, htmlLang, useTranslations } from "@/i18n/ui";
 import type { SiteMeta } from "@/types";
 
 interface Props {
 	meta: SiteMeta;
+	/** Locale-agnostic path (no `/en` prefix) of the same page in the other locale, used when it cannot be derived from the URL */
+	altLangHref?: string | undefined;
 }
 
 const {
-	meta: { articleDate, description = siteConfig.description, ogImage, title },
+	meta: { articleDate, description, ogImage, title },
+	altLangHref,
 } = Astro.props;
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const metaDescription = description ?? t("site.description");
 ---
 
-<html class="scroll-smooth" lang={siteConfig.lang}>
+<html class="scroll-smooth" lang={htmlLang[lang]}>
 	<head>
-		<BaseHead articleDate={articleDate} description={description} ogImage={ogImage} title={title} />
+		<BaseHead
+			altLangHref={altLangHref}
+			articleDate={articleDate}
+			description={metaDescription}
+			ogImage={ogImage}
+			title={title}
+		/>
 		<ThemeProvider />
 	</head>
-	<body
-		class="bg-global-bg text-global-text mx-auto flex min-h-screen max-w-3xl flex-col px-4 pt-16 font-mono text-sm font-normal antialiased sm:px-8"
-	>
+	<body class="bg-global-bg text-global-text mx-auto flex min-h-screen max-w-3xl flex-col px-4 pt-16 font-mono text-sm font-normal antialiased sm:px-8">
 		<SkipLink />
-		<Header />
+		<Header altLangHref={altLangHref} />
 		<main id="main">
 			<slot />
 		</main>

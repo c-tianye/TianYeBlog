@@ -1,0 +1,33 @@
+---
+import Note from "@/components/note/Note.astro";
+import { getAllNotes } from "@/data/post";
+import { type Lang, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+import type { NoteEntry } from "@/types";
+import { getFormattedDate } from "@/utils/date";
+
+interface Props {
+	lang: Lang;
+	note: NoteEntry;
+}
+
+const { lang, note } = Astro.props;
+const t = useTranslations(lang);
+
+const otherLang: Lang = lang === "en" ? "zh" : "en";
+const otherNotes = await getAllNotes(otherLang);
+
+// Notes keep the same slug in both locales; fall back to the notes index when there is no translation.
+const altLangHref = otherNotes.some((other) => other.id === note.id) ? undefined : "/notes/";
+
+const meta = {
+	description:
+		note.data.description ??
+		`${t("nav.notes")} · ${getFormattedDate(note.data.publishDate, undefined, lang)}`,
+	title: note.data.title,
+};
+---
+
+<PageLayout altLangHref={altLangHref} meta={meta}>
+	<Note as="h1" note={note} />
+</PageLayout>

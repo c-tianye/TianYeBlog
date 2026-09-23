@@ -1,20 +1,24 @@
 ---
-import type { CollectionEntry } from "astro:content";
 import type { HTMLTag, Polymorphic } from "astro/types";
 import FormattedDate from "@/components/FormattedDate.astro";
+import { getLangFromUrl, localizePath, useTranslations } from "@/i18n/ui";
+import type { PostEntry } from "@/types";
 
 type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
-	post: CollectionEntry<"post">;
+	post: PostEntry;
 	withDesc?: boolean;
 };
 
 const { as: Tag = "div", post, withDesc = false } = Astro.props;
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 ---
 
 <FormattedDate class="text-muted min-w-30 font-semibold" date={post.data.publishDate} />
 <Tag>
-	{post.data.draft && <span class="text-red-500">(Draft) </span>}
-	<a class="cactus-link" href={`/posts/${post.id}/`}>
+	{post.data.draft && <span class="text-red-500">{t("common.draft")} </span>}
+	<a class="cactus-link" href={localizePath(`/posts/${post.id}/`, lang)}>
 		{post.data.title}
 	</a>
 </Tag>

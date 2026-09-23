@@ -1,7 +1,7 @@
 ---
 title: "你好，世界"
 description: "这个博客的第一篇文章，说明它是什么以及后续会写什么。"
-publishDate: "2025-01-01"
+publishDate: "2026-09-23"
 tags: ["随笔"]
 ---
 
@@ -25,10 +25,10 @@ tags: ["随笔"]
 ---
 title: "文章标题"
 description: "用于列表和 SEO 的描述"
-publishDate: "2025-01-01"
+publishDate: "2026-09-23"
 tags: ["标签一", "标签二"]
 draft: false
 ---
 ```
 
-`draft: true` 的文章不会出现在构建产物中。短笔记放在 `content/notes/` 下，字段更少，只需要 `title` 和 `publishDate`。
+`draft: true` 的文章不会出现在构建产物中。短笔记放在 `content/notes/` 下，字段更少，只需要 `title` 和 `publishDate`。英文内容放在 `content/en/` 下的同名目录里。

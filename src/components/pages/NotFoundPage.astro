@@ -1,0 +1,23 @@
+---
+import { getLangFromUrl, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const tEn = useTranslations("en");
+
+const meta = {
+	description: t("404.description"),
+	title: t("404.title"),
+};
+---
+
+<PageLayout altLangHref="/" meta={meta}>
+	<h1 class="title mb-12">{t("404.heading")}</h1>
+	<p class="mb-2">{t("404.text")}</p>
+	{lang !== "en" && (
+		<p class="text-muted mb-8">
+			{tEn("404.heading")} — {tEn("404.text")}
+		</p>
+	)}
+</PageLayout>

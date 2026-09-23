@@ -1,0 +1,106 @@
+---
+import PostPreview from "@/components/blog/PostPreview.astro";
+import Note from "@/components/note/Note.astro";
+import SocialList from "@/components/SocialList.astro";
+import { getAllNotes, getAllPosts } from "@/data/post";
+import { type Lang, localizePath, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+import { collectionDateSort } from "@/utils/date";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Posts
+const MAX_POSTS = 10;
+const allPosts = await getAllPosts(lang);
+const allPostsByDate = allPosts.sort(collectionDateSort);
+const latestPosts = allPostsByDate.slice(0, MAX_POSTS);
+
+// Pinned Posts, set to a max of 3;
+const MAX_PINNED_POSTS = 3;
+const pinnedPosts = allPostsByDate
+	.values()
+	.filter((p) => p.data.pinned)
+	.take(MAX_PINNED_POSTS)
+	.toArray();
+
+// Notes, set to a max of 5
+const MAX_NOTES = 5;
+const allNotes = await getAllNotes(lang);
+const latestNotes = allNotes.sort(collectionDateSort).slice(0, MAX_NOTES);
+---
+
+<PageLayout meta={{ title: t("nav.home") }}>
+	<section>
+		<h1 class="title mb-12">{t("home.heading")}</h1>
+		{lang === "en" ? (
+			<>
+				<p class="mb-4">
+					Hi, I'm c-tianye. This is my personal engineering blog — a place to write down the
+					decisions, dead ends and reasoning behind the work I do, so that the conclusions can be
+					reused instead of rediscovered.
+				</p>
+				<p class="mb-4">
+					The site is built with Astro, styled with Tailwind CSS, searched with Pagefind and served
+					as static assets from Cloudflare Workers. Chinese lives at the root and English under
+					<code>/en/</code>. Posts and notes aim to carry the full commands, configuration and
+					results rather than just the outcome.
+				</p>
+			</>
+		) : (
+			<>
+				<p class="mb-4">
+					你好！我是 c-tianye，这里是我的个人技术博客，用来记录工程实践里的决策、踩坑和验证过程。
+				</p>
+				<p class="mb-4">
+					站点用 Astro 构建，Tailwind CSS 排版，Pagefind 做站内搜索，静态产物托管在 Cloudflare
+					Workers 上。中文内容在根路径，英文内容在 <code>/en/</code>{" "}
+					下。文章与短笔记都会尽量带上完整的命令、配置和结果，而不只是结论。
+				</p>
+			</>
+		)}
+		<SocialList />
+	</section>
+	{pinnedPosts.length > 0 && (
+		<section class="mt-16">
+			<h2 class="title mb-6 text-xl">{t("home.pinnedPosts")}</h2>
+			<ul class="space-y-4" role="list">
+				{pinnedPosts.map((p) => (
+					<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
+						<PostPreview post={p} />
+					</li>
+				))}
+			</ul>
+		</section>
+	)}
+	<section class="mt-16">
+		<h2 class="title text-accent mb-6 text-xl">
+			<a href={localizePath("/posts/", lang)}>{t("nav.posts")}</a>
+		</h2>
+		<ul class="space-y-4" role="list">
+			{latestPosts.map((p) => (
+				<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
+					<PostPreview post={p} />
+				</li>
+			))}
+		</ul>
+	</section>
+	{latestNotes.length > 0 && (
+		<section class="mt-16">
+			<h2 class="title text-accent mb-6 text-xl">
+				<a href={localizePath("/notes/", lang)}>{t("nav.notes")}</a>
+			</h2>
+			<ul class="space-y-6" role="list">
+				{latestNotes.map((note) => (
+					<li>
+						<Note note={note} as="h3" isPreview />
+					</li>
+				))}
+			</ul>
+		</section>
+	)}
+</PageLayout>

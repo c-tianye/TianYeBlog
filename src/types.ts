@@ -1,3 +1,5 @@
+import type { CollectionEntry } from "astro:content";
+
 export interface SiteConfig {
 	author: string;
 	date: {
@@ -81,3 +83,11 @@ export interface Summary {
 }
 
 export type AdmonitionType = "tip" | "note" | "important" | "caution" | "warning";
+
+/**
+ * Content entries shared by both locales. Each kind of content has one collection per
+ * locale (see src/content.config.ts), and both collections use the same schema.
+ */
+export type PostEntry = CollectionEntry<"post"> | CollectionEntry<"postEn">;
+export type NoteEntry = CollectionEntry<"note"> | CollectionEntry<"noteEn">;
+export type TagEntry = CollectionEntry<"tag"> | CollectionEntry<"tagEn">;

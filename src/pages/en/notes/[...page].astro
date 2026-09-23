@@ -1,0 +1,21 @@
+---
+import type { GetStaticPaths, Page } from "astro";
+import NotesPage from "@/components/pages/NotesPage.astro";
+import { getAllNotes } from "@/data/post";
+import type { NoteEntry } from "@/types";
+import { collectionDateSort } from "@/utils/date";
+
+export const getStaticPaths = (async ({ paginate }) => {
+	const MAX_NOTES_PER_PAGE = 10;
+	const allNotes = await getAllNotes("en");
+	return paginate(allNotes.sort(collectionDateSort), { pageSize: MAX_NOTES_PER_PAGE });
+}) satisfies GetStaticPaths;
+
+interface Props {
+	page: Page<NoteEntry>;
+}
+
+const { page } = Astro.props as Props;
+---
+
+<NotesPage lang="en" page={page} />

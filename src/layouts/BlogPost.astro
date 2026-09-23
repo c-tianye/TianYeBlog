@@ -4,22 +4,32 @@ import { type CollectionEntry, render } from "astro:content";
 import Masthead from "@/components/blog/Masthead.astro";
 import TOC from "@/components/blog/TOC.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
+import { getLangFromUrl, useTranslations } from "@/i18n/ui";
+import type { PostEntry } from "@/types";
 
 import BaseLayout from "./Base.astro";
 
 interface Props {
-	post: CollectionEntry<"post">;
+	post: PostEntry;
+	/** Path of the same post in the other locale, when it can't be derived from the URL */
+	altLangHref?: string | undefined;
 }
 
-const { post } = Astro.props;
+const { post, altLangHref } = Astro.props;
 const { ogImage, title, description, updatedDate, publishDate } = post.data;
-const socialImage = ogImage ?? `/og-image/${post.id}.png`;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+// og images are namespaced per locale: /og-image/<slug>.png and /og-image/en/<slug>.png
+const socialImage =
+	ogImage ??
+	(post.collection === "postEn" ? `/og-image/en/${post.id}.png` : `/og-image/${post.id}.png`);
 const articleDate = updatedDate?.toISOString() ?? publishDate.toISOString();
-const { headings, remarkPluginFrontmatter } = await render(post);
+const { headings, remarkPluginFrontmatter } = await render(post as CollectionEntry<"post">);
 const readingTime: string = remarkPluginFrontmatter.readingTime;
 ---
 
 <BaseLayout
+	altLangHref={altLangHref}
 	meta={{
 		articleDate,
 		description,
@@ -28,12 +38,12 @@ const readingTime: string = remarkPluginFrontmatter.readingTime;
 	}}
 >
 	<article class="grow break-words" data-pagefind-body>
-		<div id="blog-hero" class="mb-12"><Masthead content={post} readingTime={readingTime} /></div>
+		<div id="blog-hero" class="mb-12">
+			<Masthead content={post} readingTime={readingTime} />
+		</div>
 		<div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
 			{!!headings.length && <TOC headings={headings} />}
-			<div
-				class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-muted prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none"
-			>
+			<div class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-muted prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none">
 				<slot />
 				<WebMentions />
 			</div>
@@ -44,7 +54,7 @@ const readingTime: string = remarkPluginFrontmatter.readingTime;
 		data-show="false"
 		id="to-top-btn"
 	>
-		<span class="sr-only">Back to top</span>
+		<span class="sr-only">{t("common.backToTop")}</span>
 		<svg
 			aria-hidden="true"
 			class="h-6 w-6"

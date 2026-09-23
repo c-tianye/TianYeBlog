@@ -1,0 +1,38 @@
+---
+import { getAllPosts, getUniqueTagsWithCount } from "@/data/post";
+import { type Lang, localizePath, useTranslations } from "@/i18n/ui";
+import PageLayout from "@/layouts/Base.astro";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const allPosts = await getAllPosts(lang);
+const allTags = getUniqueTagsWithCount(allPosts);
+
+const meta = {
+	description: t("tags.description"),
+	title: t("tags.title"),
+};
+---
+
+<PageLayout meta={meta}>
+	<h1 class="title mb-6">{t("tags.title")}</h1>
+	<ul class="space-y-4">
+		{allTags.map(([tag, val]) => (
+			<li class="flex items-center gap-x-2">
+				<a
+					class="cactus-link inline-block"
+					href={localizePath(`/tags/${tag}/`, lang)}
+					title={t("tags.viewPostsWithTag")}
+				>
+					&#35;{tag}
+				</a>
+				<span class="inline-block">- {t("tags.count")(val)}</span>
+			</li>
+		))}
+	</ul>
+</PageLayout>

@@ -1,22 +1,5 @@
 ---
-import SocialList from "@/components/SocialList.astro";
-import PageLayout from "@/layouts/Base.astro";
-
-const meta = {
-	description: "关于 c-tianye 与这个博客",
-	title: "About",
-};
+import AboutPage from "@/components/pages/AboutPage.astro";
 ---
 
-<PageLayout meta={meta}>
-	<h1 class="title mb-12">About</h1>
-	<div class="prose prose-sm prose-cactus max-w-none">
-		<p>
-			你好，我是 c-tianye。这里是我的个人技术博客，用来记录工程实践、踩坑笔记和长期思考。
-		</p>
-		<p>
-			内容以可复现的过程和结论为主，尽量给出完整的命令、配置和验证方式，方便自己回头查阅，也方便他人复用。
-		</p>
-		<SocialList />
-	</div>
-</PageLayout>
+<AboutPage lang="zh" />
