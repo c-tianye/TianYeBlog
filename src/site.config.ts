@@ -16,7 +16,8 @@ export const siteConfig: SiteConfig = {
 	// Used as both a meta property (src/components/BaseHead.astro L:31 + L:49) & the generated satori png (src/pages/og-image/[slug].png.ts)
 	author: "c-tianye",
 	// Used as the default description meta property and webmanifest description
-	description: "c-tianye 的个人技术博客",
+	description:
+		"c-tianye 的个人技术博客：量化交易与金融数据工具、PyTorch 时间序列建模，以及工程实践笔记。",
 	// HTML lang property, found in src/layouts/Base.astro L:18 & astro.config.ts L:48
 	lang: "zh-CN",
 	// Meta property, found in src/components/BaseHead.astro L:42

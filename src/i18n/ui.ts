@@ -91,7 +91,8 @@ export interface Translations {
 export const ui: Record<Lang, Translations> = {
 	zh: {
 		"site.title": "天业 Blog",
-		"site.description": "c-tianye 的个人技术博客",
+		"site.description":
+			"c-tianye 的个人技术博客：量化交易与金融数据工具、PyTorch 时间序列建模，以及工程实践笔记。",
 
 		"nav.home": "首页",
 		"nav.about": "关于",
@@ -150,7 +151,8 @@ export const ui: Record<Lang, Translations> = {
 	},
 	en: {
 		"site.title": "TianYe Blog",
-		"site.description": "c-tianye's personal engineering blog",
+		"site.description":
+			"c-tianye's personal engineering blog: quant trading and financial data tooling, time-series modelling in PyTorch, and engineering notes.",
 
 		"nav.home": "Home",
 		"nav.about": "About",

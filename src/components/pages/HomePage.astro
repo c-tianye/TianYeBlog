@@ -40,26 +40,80 @@ const latestNotes = allNotes.sort(collectionDateSort).slice(0, MAX_NOTES);
 		{lang === "en" ? (
 			<>
 				<p class="mb-4">
-					Hi, I'm c-tianye. This is my personal engineering blog — a place to write down the
-					decisions, dead ends and reasoning behind the work I do, so that the conclusions can be
-					reused instead of rediscovered.
+					Hi, I'm c-tianye. This is my personal engineering blog — a place to keep the parts of
+					everyday engineering work that are worth writing down.
 				</p>
 				<p class="mb-4">
-					The site is built with Astro, styled with Tailwind CSS, searched with Pagefind and served
-					as static assets from Cloudflare Workers. Chinese lives at the root and English under
-					<code>/en/</code>. Posts and notes aim to carry the full commands, configuration and
-					results rather than just the outcome.
+					My work mostly revolves around three things.{" "}
+					<strong>Quant trading and financial data tooling</strong>: turning daily order-book
+					anomaly and capital-flow spreadsheets into a queryable summary, keeping multi-trading-day
+					amount statistics, and packaging it as a service that starts with one command or a
+					container. <strong>Time-series modelling in PyTorch</strong>: LSTM encoder-decoder,
+					Bahdanau attention and vanilla Transformer, plus applying CNN-LSTM-Attention to waveform
+					classification for structural detection (
+					<a
+						href="https://github.com/c-tianye/cnn_lstm_attention_models"
+						rel="noreferrer"
+						target="_blank"
+					>
+						cnn_lstm_attention_models
+					</a>
+					). <strong>Embedded work</strong>: small ESP32-C3 / ESP-IDF firmware projects (
+					<a
+						href="https://github.com/c-tianye/esp32c3-firmware-test"
+						rel="noreferrer"
+						target="_blank"
+					>
+						esp32c3-firmware-test
+					</a>
+					).
+				</p>
+				<p class="mb-4">
+					This blog is a by-product of that work, and the goal is reproducibility: complete
+					commands, configuration and results rather than just conclusions. The public code sits on{" "}
+					<a href="https://github.com/c-tianye" rel="noreferrer" target="_blank">
+						GitHub
+					</a>
+					. The site itself is built with Astro, styled with Tailwind CSS, searched with Pagefind
+					and served as static assets from Cloudflare Workers — Chinese at the root, English under
+					<code>/en/</code>.
 				</p>
 			</>
 		) : (
 			<>
 				<p class="mb-4">
-					你好！我是 c-tianye，这里是我的个人技术博客，用来记录工程实践里的决策、踩坑和验证过程。
+					你好！我是 c-tianye，这里是我的个人技术博客，用来存放日常工程里值得写下来的部分。
 				</p>
 				<p class="mb-4">
-					站点用 Astro 构建，Tailwind CSS 排版，Pagefind 做站内搜索，静态产物托管在 Cloudflare
-					Workers 上。中文内容在根路径，英文内容在 <code>/en/</code>{" "}
-					下。文章与短笔记都会尽量带上完整的命令、配置和结果，而不只是结论。
+					我的工作主要围绕三件事。<strong>量化交易与金融数据工具</strong>
+					：把每日的行情异动与资金流向 Excel
+					整理成可查询的汇总，维护多个交易日的金额统计，并做成一条命令或一个容器就能跑起来的服务。
+					<strong>PyTorch 时间序列建模</strong>：LSTM encoder-decoder、Bahdanau 注意力、Vanilla
+					Transformer，以及把 CNN-LSTM-Attention 用到海洋结构检测的波形分类上（
+					<a
+						href="https://github.com/c-tianye/cnn_lstm_attention_models"
+						rel="noreferrer"
+						target="_blank"
+					>
+						cnn_lstm_attention_models
+					</a>
+					）。<strong>少量嵌入式</strong>：ESP32-C3 / ESP-IDF 的小工程（
+					<a
+						href="https://github.com/c-tianye/esp32c3-firmware-test"
+						rel="noreferrer"
+						target="_blank"
+					>
+						esp32c3-firmware-test
+					</a>
+					）。
+				</p>
+				<p class="mb-4">
+					这个博客是这些工作的副产品，写作目标是可复现：给出完整的命令、配置和结果，而不只是结论。公开的代码在{" "}
+					<a href="https://github.com/c-tianye" rel="noreferrer" target="_blank">
+						GitHub
+					</a>{" "}
+					上。站点用 Astro 构建、Tailwind CSS 排版、Pagefind 做站内搜索，静态产物托管在 Cloudflare
+					Workers 上，中文内容在根路径，英文内容在 <code>/en/</code> 下。
 				</p>
 			</>
 		)}
