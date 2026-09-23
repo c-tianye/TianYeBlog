@@ -54,21 +54,46 @@ gh run rerun 35809530164 --repo c-tianye/TianYeBlog
 gh workflow run deploy --repo c-tianye/TianYeBlog
 ```
 
-部署成功后访问 `https://tianye-blog.<你的子域>.workers.dev`。
+部署成功后访问 `https://tianye-blog.<你的子域>.workers.dev`（`workers.dev` 地址始终可用，作为回退入口）。
 
 > Worker 名称在 `wrangler.jsonc` 的 `name` 字段，当前为 `tianye-blog`。
 
-## 5. 绑定自定义域名（可选）
+## 5. 绑定自定义域名 `blog.luxstarspace.com`
 
-Cloudflare Dashboard → **Workers & Pages** → `tianye-blog` → **Settings** → **Domains & Routes** → **Add** → **Custom Domain**。
+`src/site.config.ts` 的 `siteConfig.url` 已设为 `https://blog.luxstarspace.com/`，接下来把域名指向 Worker。
 
-绑定后需要同步更新 `src/site.config.ts` 的 `siteConfig.url` 为正式域名，否则 sitemap、RSS 和 OG 图片里的绝对地址会指向 `workers.dev`：
+前置条件：`luxstarspace.com` 的 DNS 已托管在同一个 Cloudflare 账户下。如果不在，需先把域名的 nameserver 改到 Cloudflare。
 
-```ts
-url: "https://your-domain.com/",
+Cloudflare Dashboard → **Workers & Pages** → `tianye-blog` → **Settings** → **Domains & Routes** → **Add** → **Custom Domain**，填入：
+
+```
+blog.luxstarspace.com
 ```
 
-然后重新部署。
+Cloudflare 会自动创建一条指向该 Worker 的 DNS 记录（类型为 `Custom Domain`，代理开启）。生效通常需要几分钟。
+
+也可以用 wrangler 添加：
+
+```bash
+pnpm wrangler domains add blog.luxstarspace.com
+```
+
+### 验证
+
+```bash
+curl -I https://blog.luxstarspace.com/
+```
+
+应返回 `200`。再看证书是否签发成功：
+
+```bash
+echo | openssl s_client -connect blog.luxstarspace.com:443 -servername blog.luxstarspace.com 2>/dev/null | openssl x509 -noout -subject -dates
+```
+
+### 注意
+
+- 如果 `blog` 子域已存在同名 DNS 记录（A / CNAME），需先删除，否则 Custom Domain 无法绑定
+- `siteConfig.url` 决定 sitemap、RSS 和 OG 图片里的绝对地址，改域名后必须重新部署才会生效
 
 ## 常见问题
 

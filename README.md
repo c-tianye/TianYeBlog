@@ -41,10 +41,9 @@ wrangler.jsonc    # Cloudflare Workers 部署配置
 ## 自定义站点信息
 
 站点标题、作者、描述、语言和导航菜单集中在 `src/site.config.ts`。
-部署域名同时出现在两处，需要保持一致：
 
-- `src/site.config.ts` 的 `siteConfig.url`
-- `wrangler.jsonc` 不需要域名，但 Worker 名称 `name` 决定了默认的 `*.workers.dev` 子域
+正式域名已配置为 `https://blog.luxstarspace.com/`，定义在 `src/site.config.ts` 的 `siteConfig.url`。
+`wrangler.jsonc` 不需要域名，但 Worker 名称 `name` 决定了默认的 `*.workers.dev` 回退地址。
 
 社交链接在 `src/components/SocialList.astro`。
 
@@ -77,7 +76,10 @@ draft: false
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API Token，权限需包含 `Workers Scripts: Edit` 与 `Account Settings: Read` |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户 ID，可在 Dashboard 右侧栏或 `wrangler whoami` 查看 |
 
-配置完成后 push 到 `main` 即可自动部署。首次部署后访问 `https://<worker-name>.<subdomain>.workers.dev`。
+配置完成后 push 到 `main` 即可自动部署。
+
+- 正式地址：`https://blog.luxstarspace.com`
+- 回退地址：`https://tianye-blog.<你的子域>.workers.dev`
 
 ### 手动部署
 
@@ -90,7 +92,10 @@ pnpm wrangler deploy
 
 ### 绑定自定义域名
 
-在 Cloudflare Dashboard → Workers & Pages → `tianye-blog` → Settings → Domains & Routes 添加自定义域名。绑定后记得把 `src/site.config.ts` 的 `siteConfig.url` 更新为正式域名并重新部署。
+在 Cloudflare Dashboard → Workers & Pages → `tianye-blog` → Settings → Domains & Routes 添加 `blog.luxstarspace.com`。
+需要先确保 `luxstarspace.com` 的 DNS 托管在同一 Cloudflare 账户，并删除该子域已存在的同名记录。
+
+详细步骤见 [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md)。修改域名后 `siteConfig.url` 必须同步更新并重新部署，否则 sitemap、RSS 和 OG 图片的绝对地址会出错。
 
 ## 注意事项
 
