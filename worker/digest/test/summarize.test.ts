@@ -6,14 +6,31 @@ import { DEFAULT_MODEL, MODEL_FALLBACKS, shouldTryNextModel } from "../src/summa
  * Guards against the failure mode we already hit once: a hand-written model id that does not
  * exist ("gemini-3.8-flash-lite"), or a default that silently drifts away from the fallbacks.
  */
-test("model ids follow Google's naming scheme", () => {
-	const pattern = /^gemini-[\d.]+-(flash|flash-lite|pro)(-[a-z]+)*$/;
-	assert.match(DEFAULT_MODEL, pattern);
-	for (const model of MODEL_FALLBACKS) assert.match(model, pattern);
+/**
+ * Snapshot of ids confirmed against the live list (https://ai.google.dev/gemini-api/docs/models
+ * plus `GET /models` with the blog's own key, 2026-09-23). Adding a model that is not in here
+ * fails the test, which is what catches hand-written ids like "gemini-3.8-flash-lite".
+ */
+const VERIFIED_IDS = new Set([
+	"gemini-3.8-flash",
+	"gemini-3.7-flash",
+	"gemini-3.6-flash",
+	"gemini-3.5-flash-lite",
+	"gemini-3.1-flash-lite",
+	"gemini-2.5-pro",
+	"gemini-flash-latest",
+	"gemini-flash-lite-latest",
+]);
+
+test("every model id in the chain is a verified one", () => {
+	for (const model of [DEFAULT_MODEL, ...MODEL_FALLBACKS]) {
+		assert.ok(VERIFIED_IDS.has(model), `${model} is not in VERIFIED_IDS — check GET /models first`);
+	}
 	assert.ok(
 		MODEL_FALLBACKS.includes(DEFAULT_MODEL),
 		`${DEFAULT_MODEL} must be part of MODEL_FALLBACKS`,
 	);
+	assert.equal(new Set(MODEL_FALLBACKS).size, MODEL_FALLBACKS.length, "no duplicate fallbacks");
 });
 
 test("falls back for retired, overloaded and quota-exhausted models", () => {
@@ -32,7 +49,16 @@ test("falls back for retired, overloaded and quota-exhausted models", () => {
 });
 
 test("does not walk the fallback chain for auth or request errors", () => {
-	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: API key not valid")), false);
-	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 403: permission denied")), false);
-	assert.equal(shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: invalid JSON payload")), false);
+	assert.equal(
+		shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: API key not valid")),
+		false,
+	);
+	assert.equal(
+		shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 403: permission denied")),
+		false,
+	);
+	assert.equal(
+		shouldTryNextModel(new Error("Gemini[gemini-3.8-flash] 400: invalid JSON payload")),
+		false,
+	);
 });

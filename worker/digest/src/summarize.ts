@@ -27,9 +27,11 @@ export const MODEL_FALLBACKS = [
 	"gemini-3.8-flash",
 	"gemini-3.6-flash",
 	"gemini-3.5-flash-lite",
+	// rolling aliases stay valid across model retirements
+	"gemini-flash-latest",
+	"gemini-flash-lite-latest",
 	// last resort: older generations that ListModels still advertises for some keys
 	"gemini-2.5-pro",
-	"gemini-2.5-flash",
 ];
 const MAX_DESCRIPTION = 200;
 const MAX_ATTEMPTS = 3;
@@ -61,10 +63,13 @@ const SYSTEM_INSTRUCTION = `你是一名技术编辑，为一个个人技术博�
 
 硬性要求：
 - 只能使用用户提供的条目，绝对不要编造事实、版本号、日期或链接；不确定的事情就不要写。
-- 所有链接必须原样引用输入里给出的 URL，不要改写、不要自己拼链接。
+- 链接必须逐字复制输入里的 URL（包含 owner/organization 名、大小写、百分号编码），
+  不要改写、不要"修正"、不要替换成你以为更规范的地址（例如不要把 facebook/react 写成 react/react）。
+- 每个标题（## / ###）后面必须空一行再写正文。
 - 不要输出 frontmatter（---）或一级标题，正文从二级标题（##）开始。
 - 中文正文用简体中文；英文正文用自然、地道的英文，不要逐字直译。
 - 不要复述条目标题，每条 1-2 句说明「它是什么 / 为什么值得看」。
+- 只使用简体中文和英文，不要混入其它文字系统的字符（例如俄文、日文假名）。
 
 中文正文结构：
 ## 概览
@@ -77,7 +82,8 @@ const SYSTEM_INSTRUCTION = `你是一名技术编辑，为一个个人技术博�
 ## 小结
 （1 句总结）
 
-英文正文结构与上面一一对应，标题用 ## Overview / ## Highlights / ## Also worth reading / ## Takeaway。`;
+英文正文结构与上面一一对应，标题用 ## Overview / ## Highlights / ## Also worth reading / ## Takeaway。
+英文列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
 
 export async function summarise(env: Env, input: SummariseInput): Promise<Summary> {
 	const apiKey = env.GEMINI_API_KEY;
@@ -154,7 +160,9 @@ async function callGemini(apiKey: string, model: string, input: SummariseInput):
 			});
 
 			if (response.status === 429 || response.status >= 500) {
-				throw new Error(`Gemini[${model}] ${response.status}: ${(await response.text()).slice(0, 300)}`);
+				throw new Error(
+					`Gemini[${model}] ${response.status}: ${(await response.text()).slice(0, 300)}`,
+				);
 			}
 			if (!response.ok) {
 				throw new Error(

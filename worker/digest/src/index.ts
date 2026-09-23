@@ -1,6 +1,7 @@
 import type { Env } from "./env";
 import { commitFiles, fileExists } from "./github";
 import { groupConfig, groupFromCron, groupList } from "./groups";
+import { repairSummaryLinks } from "./links";
 import { buildPost, buildRawSummary, slugFor } from "./render";
 import { sources } from "./sources";
 import { freshItems, getRuns, loadSeen, recordRun, rememberSeen } from "./state";
@@ -271,6 +272,10 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 			summary = buildRawSummary({ group: options.group, now: startedAt, sources: collected });
 		}
 	}
+
+	// never publish a link that was not actually crawled
+	const allItems = collected.flatMap((entry) => entry.items);
+	if (!options.skipAi) repairSummaryLinks(summary, allItems);
 
 	const post = buildPost({
 		group: options.group,

@@ -8,8 +8,12 @@ const FEEDS = [
 	{ label: "React", url: "https://react.dev/rss.xml" },
 ];
 
-/** Repos whose releases are part of the "Vite / React stack" news stream. */
-const RELEASES = ["vitejs/vite", "facebook/react"];
+/**
+ * Repos whose releases are part of the "Vite / React stack" news stream.
+ * Use the canonical names: GitHub 301s renamed repos (facebook/react -> react/react) and the
+ * API then returns html_url with the new owner, which would disagree with a stale label here.
+ */
+const RELEASES = ["vitejs/vite", "react/react"];
 
 /** Blog posts and releases are sparse, so look back further than the group cadence. */
 const LOOKBACK_DAYS = 14;
