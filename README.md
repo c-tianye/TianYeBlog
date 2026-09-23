@@ -126,6 +126,28 @@ pnpm wrangler deploy
 
 详细步骤见 [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md)。修改域名后 `siteConfig.url` 必须同步更新并重新部署，否则 sitemap、RSS 和 OG 图片的绝对地址会出错。
 
+## 自动化科技速览（`worker/digest`）
+
+仓库里还包含一个独立的 Cloudflare Worker `tianye-digest`：定时抓取公开技术信息源，用 Gemini 汇总成中英双语摘要，再提交回本仓库，由 `deploy.yml` 自动重建上线。
+
+| 系列 | 频率 | 来源 |
+| --- | --- | --- |
+| HN 热榜 | 每 5 小时 | Hacker News |
+| 日报 | 每天 09:00（CST） | Vite / React、GitHub 热榜、Python 官方文档与 PEP、Reddit |
+| 周报 | 每周一 10:00（CST） | HelloGitHub、Koala 聊开源 |
+
+生成的文章带上 `速览` / `digest` 标签（中英各一组），位于 `content/posts/` 与 `content/en/posts/`，因此也能在标签页里浏览：`/tags/速览/`。
+
+使用前需要自己填三个密钥（Gemini API Key、带 `Contents: write` 的 GitHub PAT、手动触发 token），完整说明见 [`worker/digest/README.md`](worker/digest/README.md)。
+
+```bash
+cd worker/digest
+pnpm exec wrangler secret put GEMINI_API_KEY
+pnpm exec wrangler secret put GITHUB_TOKEN
+pnpm exec wrangler secret put TRIGGER_TOKEN
+pnpm exec wrangler deploy
+```
+
 ## 注意事项
 
 - `dist/`、`node_modules/`、`.env` 不提交

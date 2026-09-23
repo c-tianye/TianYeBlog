@@ -1,0 +1,27 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "tianye-digest",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-01-01",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "DIGEST_STATE",
+			"id": "2c3cea350e2b4759a107e25fd7362819"
+		}
+	],
+	// Hacker News every 5h · daily digest at 09:00 CST · weekly digest Monday 10:00 CST
+	"triggers": {
+		"crons": ["0 */5 * * *", "0 1 * * *", "0 2 * * 1"]
+	},
+	"vars": {
+		"GEMINI_MODEL": "gemini-2.5-flash",
+		"BLOG_REPO": "c-tianye/TianYeBlog",
+		"BLOG_BRANCH": "main",
+		"SITE_URL": "https://blog.luxstarspace.com",
+		"REDDIT_SUBS": "technology",
+		"PYTHON_CHANGELOG": "false"
+	}
+}
