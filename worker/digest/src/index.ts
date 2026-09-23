@@ -122,6 +122,21 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 		return await finish({ report });
 	}
 
+	// Fail fast (and cleanly) when the worker has not been configured yet, so the cron keeps
+	// producing a readable report instead of an unhandled error.
+	const needsAi = !options.skipAi && !env.GEMINI_API_KEY && env.DIGEST_RAW_FALLBACK !== "true";
+	const needsToken = !options.dryRun && !env.GITHUB_TOKEN;
+	if (needsAi || needsToken) {
+		report.skipped = [
+			needsAi ? "GEMINI_API_KEY is not set" : undefined,
+			needsToken ? "GITHUB_TOKEN is not set" : undefined,
+		]
+			.filter(Boolean)
+			.join("; ");
+		console.warn(`digest: skipping run — ${report.skipped}`);
+		return await finish({ report });
+	}
+
 	const collected: { source: (typeof sources)[string]; items: SourceItem[] }[] = [];
 
 	for (const sourceId of config.sourceIds) {
@@ -228,21 +243,26 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 		return await finish({ report, preview: [{ files: post.files, slug }] });
 	}
 
-	const commit = await commitFiles(
-		env,
-		post.files,
-		`content(digest): ${options.group} digest ${slug}`,
-	);
-	report.committed = true;
-	report.commit = { files: commit.paths, sha: commit.sha };
-
-	// Only mark items as seen once they are actually in the repository.
-	for (const entry of collected) {
-		await rememberSeen(
+	try {
+		const commit = await commitFiles(
 			env,
-			entry.source.id,
-			entry.items.map((item) => item.url),
+			post.files,
+			`content(digest): ${options.group} digest ${slug}`,
 		);
+		report.committed = true;
+		report.commit = { files: commit.paths, sha: commit.sha };
+
+		// Only mark items as seen once they are actually in the repository.
+		for (const entry of collected) {
+			await rememberSeen(
+				env,
+				entry.source.id,
+				entry.items.map((item) => item.url),
+			);
+		}
+	} catch (error) {
+		report.error = `commit failed: ${(error as Error).message}`;
+		console.error(`digest: ${report.error}`);
 	}
 
 	return await finish({ report });
