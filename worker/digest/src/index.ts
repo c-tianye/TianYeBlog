@@ -159,7 +159,7 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 	const startedAt = new Date();
 	const config = groupConfig(options.group);
 	const limit = Number(env.DIGEST_ITEM_LIMIT ?? 12);
-	const minItems = Number(env.DIGEST_MIN_ITEMS ?? 3);
+	const minItems = config.minItems ?? Number(env.DIGEST_MIN_ITEMS ?? 3);
 
 	const report: RunReport = {
 		committed: false,
@@ -254,7 +254,7 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 	report.items = collected.reduce((sum, entry) => sum + entry.items.length, 0);
 
 	if (report.items < minItems) {
-		report.skipped = `only ${report.items} new items (< DIGEST_MIN_ITEMS=${minItems})`;
+		report.skipped = `only ${report.items} new items (< --min-items=${minItems})`;
 		return await finish({ report });
 	}
 

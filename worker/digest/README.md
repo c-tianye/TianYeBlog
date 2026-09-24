@@ -27,6 +27,8 @@ Cron Trigger (Worker)
 | `weekly` | `0 2 * * 1` | 每周一 10:00 | HelloGitHub、Koala 聊开源 | `速览` `周报` / `digest` `weekly` |
 | `pi` | `0 */3 * * *` | 每 3 小时 | Pi 版本更新（pi.dev/changelog） | `速览` `pi` / `digest` `pi` |
 
+`pi` 分组与其他分组的差别：只回看 **72 小时**（不补发更早的历史版本）、**1 条新版本就发**（`minItems: 1`，而不是默认的 3），每个版本页单独读取并逐条解读。
+
 文章 slug：`digest-hn-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39` / `digest-pi-20260923-1500`（中英共用同一 slug，语言切换按钮才能对上）。
 
 两个写作模板（`groups.ts` 的 `promptProfile`）：

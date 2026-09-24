@@ -16,6 +16,11 @@ export interface GroupConfig {
 	cadence: { zh: string; en: string };
 	/** "digest" = one item per story (default), "changelog" = detailed per-version breakdown */
 	promptProfile: PromptProfile;
+	/**
+	 * Minimum number of fresh items needed to publish. Defaults to DIGEST_MIN_ITEMS (3), which is
+	 * right for digests but wrong for releases: a single new version should go out immediately.
+	 */
+	minItems?: number;
 }
 
 export const groups: Record<Group, GroupConfig> = {
@@ -52,7 +57,10 @@ export const groups: Record<Group, GroupConfig> = {
 	pi: {
 		id: "pi",
 		cron: "0 */3 * * *",
-		windowHours: 24 * 14,
+		// releases land roughly daily, so only look back far enough to cover the newest few;
+		// older versions are intentionally not backfilled
+		windowHours: 72,
+		minItems: 1,
 		sourceIds: ["pi-changelog"],
 		title: { zh: "Pi 版本解读", en: "Pi Releases" },
 		tags: { zh: ["速览", "pi"], en: ["digest", "pi"] },

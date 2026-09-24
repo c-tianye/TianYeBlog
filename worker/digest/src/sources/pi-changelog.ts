@@ -38,7 +38,9 @@ export const piChangelog: Source = {
 	names: { zh: "Pi 版本更新", en: "Pi releases" },
 	homepage: "https://pi.dev/changelog",
 	enabled: true,
-	windowHours: 24 * 14,
+	// the orchestrator uses the *source's* window, not the group's: keep it at 3 days so older
+	// releases are never backfilled (releases land roughly daily)
+	windowHours: 72,
 	async fetch({ seen, since }: SourceContext) {
 		const entries = parseFeed(await fetchText(FEED), { summaryLimit: 600 })
 			// newest first, as published in the feed
