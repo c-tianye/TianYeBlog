@@ -1,7 +1,7 @@
-import { fetchJson, fetchText, githubHeaders } from "../http";
-import { clamp, parseFeed } from "../rss";
-import { daysAgo, parseDate } from "../time";
-import type { Source, SourceItem } from "../types";
+import { fetchJson, fetchText, githubHeaders } from "../http.ts";
+import { clamp, parseFeed } from "../rss.ts";
+import { daysAgo, parseDate } from "../time.ts";
+import type { Source, SourceItem } from "../types.ts";
 
 const FEEDS = [
 	{ label: "Vite", url: "https://vite.dev/blog.rss" },

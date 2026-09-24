@@ -1,4 +1,4 @@
-import type { Env } from "./env";
+import type { Env } from "./env.ts";
 
 const API = "https://api.github.com";
 const API_VERSION = "2022-11-28";

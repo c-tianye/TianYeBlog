@@ -106,7 +106,7 @@ export function parseFeed(xml: string, options: { summaryLimit?: number } = {}):
 		const rawDate = firstTag(block, ["pubDate", "published", "updated", "dc:date", "date"]);
 		const parsedDate = rawDate ? new Date(rawDate) : undefined;
 		const summary = stripHtml(
-			firstTag(block, ["description", "summary", "content:encoded", "content"]) ?? "",
+			firstTag(block, ["content:encoded", "description", "summary", "content"]) ?? "",
 		);
 
 		items.push({

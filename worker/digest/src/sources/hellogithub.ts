@@ -1,7 +1,7 @@
-import { fetchText } from "../http";
-import { parseFeed } from "../rss";
-import { daysAgo } from "../time";
-import type { Source, SourceItem } from "../types";
+import { fetchText } from "../http.ts";
+import { parseFeed } from "../rss.ts";
+import { daysAgo } from "../time.ts";
+import type { Source, SourceItem } from "../types.ts";
 
 /** HelloGitHub publishes a monthly issue; the weekly group only posts when a new one lands. */
 const LOOKBACK_DAYS = 60;

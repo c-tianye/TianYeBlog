@@ -1,12 +1,13 @@
-import type { Source } from "../types";
-import { githubTrending } from "./github-trending";
-import { hackernews } from "./hackernews";
-import { hellogithub } from "./hellogithub";
-import { koalaOss } from "./koala-oss";
-import { pythonDocs } from "./python-docs";
-import { reddit } from "./reddit";
-import { twitter } from "./twitter";
-import { viteReact } from "./vite-react";
+import type { Source } from "../types.ts";
+import { githubTrending } from "./github-trending.ts";
+import { hackernews } from "./hackernews.ts";
+import { hellogithub } from "./hellogithub.ts";
+import { koalaOss } from "./koala-oss.ts";
+import { piChangelog } from "./pi-changelog.ts";
+import { pythonDocs } from "./python-docs.ts";
+import { reddit } from "./reddit.ts";
+import { twitter } from "./twitter.ts";
+import { viteReact } from "./vite-react.ts";
 
 /** id => source. Ids are referenced by src/groups.ts. */
 export const sources: Record<string, Source> = {
@@ -14,6 +15,7 @@ export const sources: Record<string, Source> = {
 	hackernews,
 	hellogithub,
 	"koala-oss": koalaOss,
+	"pi-changelog": piChangelog,
 	"python-docs": pythonDocs,
 	reddit,
 	twitter,

@@ -1,19 +1,21 @@
-import type { Env } from "./env";
-import { commitFiles, fileExists } from "./github";
-import { groupConfig, groupFromCron, groupList } from "./groups";
-import { repairSummaryLinks } from "./links";
-import { buildPost, buildRawSummary, slugFor } from "./render";
-import { sources } from "./sources";
-import { freshItems, getRuns, loadSeen, recordRun, rememberSeen } from "./state";
-import { DEFAULT_MODEL, MODEL_FALLBACKS, summarise } from "./summarize";
-import { formatUtc, hoursAgo } from "./time";
-import { type Group, type RunReport, type SourceItem, SourceSkipped } from "./types";
+import type { Env } from "./env.ts";
+import { commitFiles, fileExists } from "./github.ts";
+import { groupConfig, groupFromCron, groupList } from "./groups.ts";
+import { repairSummaryLinks } from "./links.ts";
+import { buildPost, buildRawSummary, slugFor } from "./render.ts";
+import { sources } from "./sources/index.ts";
+import { freshItems, getRuns, loadSeen, recordRun, rememberSeen } from "./state.ts";
+import { DEFAULT_MODEL, MODEL_FALLBACKS, summarise } from "./summarize.ts";
+import { formatUtc, hoursAgo } from "./time.ts";
+import { type Group, type RunReport, type SourceItem, SourceSkipped } from "./types.ts";
 
 interface RunOptions {
 	group: Group;
 	trigger: string;
 	/** Render the post but do not commit it */
 	dryRun: boolean;
+	/** Include the crawled items in the response (parsers can be inspected without a commit) */
+	debug: boolean;
 	/** Skip Gemini (raw link list) */
 	skipAi: boolean;
 	/** Ignore the "already seen" state */
@@ -23,6 +25,19 @@ interface RunOptions {
 interface RunResult {
 	report: RunReport;
 	preview?: { files: { path: string; content: string }[]; slug: string }[];
+	/** opt-in (debug=1): what the crawler handed to the model, for eyeballing parsers */
+	debug?:
+		| {
+				source: string;
+				items: {
+					detail?: string | undefined;
+					links?: string[] | undefined;
+					meta?: string | undefined;
+					title: string;
+					url: string;
+				}[];
+		  }[]
+		| undefined;
 }
 
 export default {
@@ -109,6 +124,7 @@ export default {
 			}
 
 			const result = await runDigest(env, {
+				debug: url.searchParams.get("debug") === "1",
 				dryRun: url.searchParams.get("dryRun") === "1",
 				force: url.searchParams.get("force") === "1",
 				group,
@@ -128,6 +144,7 @@ export default {
 			return;
 		}
 		const result = await runDigest(env, {
+			debug: false,
 			dryRun: false,
 			force: false,
 			group,
@@ -203,8 +220,9 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 
 		try {
 			const since = hoursAgo(startedAt, source.windowHours);
-			const fetched = await source.fetch({ env, limit, now: startedAt, since });
-			const items = options.force ? fetched : freshItems(fetched, await loadSeen(env, source.id));
+			const seen = options.force ? new Set<string>() : await loadSeen(env, source.id);
+			const fetched = await source.fetch({ env, limit, now: startedAt, seen, since });
+			const items = options.force ? fetched : freshItems(fetched, seen);
 
 			report.sources.push({
 				fetched: fetched.length,
@@ -258,6 +276,7 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 		try {
 			summary = await summarise(env, {
 				group: options.group,
+				profile: config.promptProfile,
 				runAt: startedAt,
 				sources: collected,
 				windowLabel: config.cadence,
@@ -287,7 +306,22 @@ async function runDigest(env: Env, options: RunOptions): Promise<RunResult> {
 
 	if (options.dryRun) {
 		report.skipped = "dry run: nothing committed";
-		return await finish({ report, preview: [{ files: post.files, slug }] });
+		return await finish({
+			debug: options.debug
+				? collected.map((entry) => ({
+						items: entry.items.map((item) => ({
+							detail: item.detail?.slice(0, 900),
+							links: item.links,
+							meta: item.meta,
+							title: item.title,
+							url: item.url,
+						})),
+						source: entry.source.id,
+					}))
+				: undefined,
+			preview: [{ files: post.files, slug }],
+			report,
+		});
 	}
 
 	try {

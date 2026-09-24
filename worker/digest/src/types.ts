@@ -1,7 +1,7 @@
-import type { Env } from "./env";
+import type { Env } from "./env.ts";
 
 /** The three digest series (see wrangler.jsonc `crons`) */
-export type Group = "hn" | "daily" | "weekly";
+export type Group = "hn" | "daily" | "weekly" | "pi";
 
 /** One crawled entry, as fed to the summariser */
 export interface SourceItem {
@@ -11,6 +11,11 @@ export interface SourceItem {
 	meta?: string | undefined;
 	/** Longer raw text the model may summarise (already clamped) */
 	detail?: string | undefined;
+	/**
+	 * Extra URLs that legitimately belong to this item (inline PR/issue/doc links found on the
+	 * page). They are allowed by the link guard and offered to the model as citable sources.
+	 */
+	links?: string[] | undefined;
 }
 
 export interface SourceContext {
@@ -21,6 +26,11 @@ export interface SourceContext {
 	since: Date;
 	/** Max number of items to return */
 	limit: number;
+	/**
+	 * URLs already published by this source. Lets a source avoid expensive work (e.g. fetching a
+	 * detail page) for entries the orchestrator would drop afterwards.
+	 */
+	seen: Set<string>;
 }
 
 export interface Source {

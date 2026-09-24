@@ -20,6 +20,7 @@ export interface LinkCheckResult {
 export interface LinkSource {
 	title: string;
 	url: string;
+	links?: string[] | undefined;
 }
 
 const LINK_RE = /\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
@@ -51,6 +52,8 @@ export function repairLinks(body: string, items: LinkSource[]): LinkCheckResult 
 	const allowed = new Map<string, string>();
 	for (const item of items) {
 		allowed.set(normalizeUrl(item.url), item.url);
+		// inline links collected from the same page (PRs, issues, docs) are legitimate too
+		for (const link of item.links ?? []) allowed.set(normalizeUrl(link), link);
 	}
 
 	const byTitle = new Map<string, string>();

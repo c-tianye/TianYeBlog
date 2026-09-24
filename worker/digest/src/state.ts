@@ -1,5 +1,5 @@
-import type { Env } from "./env";
-import type { RunReport } from "./types";
+import type { Env } from "./env.ts";
+import type { RunReport } from "./types.ts";
 
 /** Item key => nothing, kept as a bounded array so one KV read is enough per source. */
 const MAX_SEEN_KEYS = 400;

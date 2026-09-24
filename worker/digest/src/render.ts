@@ -1,6 +1,6 @@
-import { groupConfig } from "./groups";
-import { cstCompactDate, cstCompactStamp, cstDate, cstDateTime, cstIso, isoWeek } from "./time";
-import type { Group, Source, SourceItem } from "./types";
+import { groupConfig } from "./groups.ts";
+import { cstCompactDate, cstCompactStamp, cstDate, cstDateTime, cstIso, isoWeek } from "./time.ts";
+import type { Group, Source, SourceItem } from "./types.ts";
 
 export interface RenderedFile {
 	path: string;
@@ -25,14 +25,20 @@ export interface PostInput {
 
 const MAX_TITLE = 60;
 
-/** File-system safe slug, shared by both locales so the language switcher lines up. */
+/**
+ * File-system safe slug, shared by both locales so the language switcher lines up.
+ * Every group needs its own prefix — two groups writing the same path would silently overwrite
+ * each other's post (and the existence check would then skip the second one).
+ */
 export function slugFor(group: Group, now: Date): string {
 	switch (group) {
 		case "hn":
 			return `digest-hn-${cstCompactStamp(now)}`;
+		case "pi":
+			return `digest-pi-${cstCompactStamp(now)}`;
 		case "weekly":
 			return `digest-weekly-${isoWeek(now).toLowerCase()}`;
-		default:
+		case "daily":
 			return `digest-daily-${cstCompactDate(now)}`;
 	}
 }
@@ -40,10 +46,11 @@ export function slugFor(group: Group, now: Date): string {
 function labelFor(group: Group, now: Date): string {
 	switch (group) {
 		case "hn":
+		case "pi":
 			return cstDateTime(now);
 		case "weekly":
 			return isoWeek(now);
-		default:
+		case "daily":
 			return cstDate(now);
 	}
 }

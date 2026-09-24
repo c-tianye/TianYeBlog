@@ -1,4 +1,7 @@
-import type { Group } from "./types";
+import type { Group } from "./types.ts";
+
+/** Which system prompt the summariser should use for this series. */
+export type PromptProfile = "digest" | "changelog";
 
 export interface GroupConfig {
 	id: Group;
@@ -11,6 +14,8 @@ export interface GroupConfig {
 	title: { zh: string; en: string };
 	tags: { zh: string[]; en: string[] };
 	cadence: { zh: string; en: string };
+	/** "digest" = one item per story (default), "changelog" = detailed per-version breakdown */
+	promptProfile: PromptProfile;
 }
 
 export const groups: Record<Group, GroupConfig> = {
@@ -22,6 +27,7 @@ export const groups: Record<Group, GroupConfig> = {
 		title: { zh: "科技速览 · HN 热榜", en: "Tech Digest · Hacker News" },
 		tags: { zh: ["速览", "hn"], en: ["digest", "hacker-news"] },
 		cadence: { zh: "每 5 小时", en: "every 5 hours" },
+		promptProfile: "digest",
 	},
 	daily: {
 		id: "daily",
@@ -31,6 +37,7 @@ export const groups: Record<Group, GroupConfig> = {
 		title: { zh: "科技速览 · 日报", en: "Tech Digest · Daily" },
 		tags: { zh: ["速览", "日报"], en: ["digest", "daily"] },
 		cadence: { zh: "每天 09:00（CST）", en: "daily at 09:00 CST" },
+		promptProfile: "digest",
 	},
 	weekly: {
 		id: "weekly",
@@ -40,6 +47,17 @@ export const groups: Record<Group, GroupConfig> = {
 		title: { zh: "科技速览 · 周报", en: "Tech Digest · Weekly" },
 		tags: { zh: ["速览", "周报"], en: ["digest", "weekly"] },
 		cadence: { zh: "每周一 10:00（CST）", en: "Mondays at 10:00 CST" },
+		promptProfile: "digest",
+	},
+	pi: {
+		id: "pi",
+		cron: "0 */3 * * *",
+		windowHours: 24 * 14,
+		sourceIds: ["pi-changelog"],
+		title: { zh: "Pi 版本解读", en: "Pi Releases" },
+		tags: { zh: ["速览", "pi"], en: ["digest", "pi"] },
+		cadence: { zh: "每 3 小时", en: "every 3 hours" },
+		promptProfile: "changelog",
 	},
 };
 

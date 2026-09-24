@@ -1,6 +1,6 @@
-import { fetchJson, fetchResponse } from "../http";
-import { clamp } from "../rss";
-import type { Source, SourceItem } from "../types";
+import { fetchJson, fetchResponse } from "../http.ts";
+import { clamp } from "../rss.ts";
+import type { Source, SourceItem } from "../types.ts";
 
 const TRENDING_URL = "https://github.com/trending?since=daily";
 

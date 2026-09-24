@@ -1,4 +1,4 @@
-import { type Source, SourceSkipped } from "../types";
+import { type Source, SourceSkipped } from "../types.ts";
 
 /**
  * 推特热榜 (X/Twitter trending) is intentionally not enabled.

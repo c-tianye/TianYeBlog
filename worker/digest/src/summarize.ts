@@ -1,5 +1,6 @@
-import type { Env } from "./env";
-import type { Group, Source, SourceItem } from "./types";
+import type { Env } from "./env.ts";
+import type { PromptProfile } from "./groups.ts";
+import type { Group, Source, SourceItem } from "./types.ts";
 
 /** What Gemini has to produce: one description + markdown body per language. */
 export interface Summary {
@@ -12,6 +13,8 @@ export interface SummariseInput {
 	runAt: Date;
 	windowLabel: { zh: string; en: string };
 	sources: { source: Source; items: SourceItem[] }[];
+	/** Which editorial structure to write (see SYSTEM_INSTRUCTIONS) */
+	profile: PromptProfile;
 }
 
 export const DEFAULT_MODEL = "gemini-3.8-flash";
@@ -59,7 +62,7 @@ const RESPONSE_SCHEMA = {
 	required: ["zh", "en"],
 } as const;
 
-const SYSTEM_INSTRUCTION = `你是一名技术编辑，为一个个人技术博客撰写「科技速览」摘要。同时输出中文与英文两个版本。
+const DIGEST_INSTRUCTION = `你是一名技术编辑，为一个个人技术博客撰写「科技速览」摘要。同时输出中文与英文两个版本。
 
 硬性要求：
 - 只能使用用户提供的条目，绝对不要编造事实、版本号、日期或链接；不确定的事情就不要写。
@@ -84,6 +87,43 @@ const SYSTEM_INSTRUCTION = `你是一名技术编辑，为一个个人技术博�
 
 英文正文结构与上面一一对应，标题用 ## Overview / ## Highlights / ## Also worth reading / ## Takeaway。
 英文列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
+
+/**
+ * Used by the "pi" series: every item is one official release page with its own sections, and the
+ * reader wants the actual changes per version rather than a general digest.
+ */
+const CHANGELOG_INSTRUCTION = `你是一名技术编辑，为一个个人技术博客撰写「Pi 版本更新解读」。同时输出中文与英文两个版本。
+
+硬性要求：
+- 每个条目是一个 Pi 版本的官方发布说明（含分类与变更列表）。只能使用输入里给出的内容，
+  不要编造版本号、功能名或链接。
+- 逐版本解读时要覆盖输入里的每个分类（New Features / Added / Changed / Fixed / Breaking Changes 等），
+  可以合并同类项，但不要漏掉整类变更；关键修复要保留 PR/issue 链接。
+- 链接必须逐字复制输入里的 URL（含 owner 名与百分号编码），不要改写或补全。
+- 不要输出 frontmatter 或一级标题；每个标题（## / ### / **粗体小标题**）后空一行。
+- 只使用简体中文和英文，不要混入其它文字系统的字符。
+
+中文正文结构：
+## 版本概览
+（2-3 句：本期包含哪些版本、这一批更新的整体主题）
+## 逐版本解读
+### Pi <版本号>（<日期>）
+**新增** —— 覆盖 New Features 与 Added
+**改动** —— 覆盖 Changed
+**修复** —— 覆盖 Fixed，保留 PR/issue 链接
+**破坏性变更** —— 仅当输入里有 Breaking Changes 时输出这一节，并说明升级时需要改什么
+（如果只包含一个版本，也保持同样的结构）
+## 升级建议
+（1-3 句：是否建议升级、需要留意什么）
+
+英文正文结构与上面一一对应：## Versions overview / ## Version by version / ### Pi x.y.z (date) /
+**New** / **Changed** / **Fixed** / **Breaking** / ## Upgrade notes，
+列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
+
+const SYSTEM_INSTRUCTIONS: Record<PromptProfile, string> = {
+	changelog: CHANGELOG_INSTRUCTION,
+	digest: DIGEST_INSTRUCTION,
+};
 
 export async function summarise(env: Env, input: SummariseInput): Promise<Summary> {
 	const apiKey = env.GEMINI_API_KEY;
@@ -138,7 +178,7 @@ export function shouldTryNextModel(error: unknown): boolean {
 async function callGemini(apiKey: string, model: string, input: SummariseInput): Promise<Summary> {
 	const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 	const body = {
-		systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+		systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTIONS[input.profile] }] },
 		contents: [{ role: "user", parts: [{ text: buildPrompt(input) }] }],
 		generationConfig: {
 			temperature: 0.4,
@@ -198,14 +238,21 @@ function buildPrompt(input: SummariseInput): string {
 		})),
 	};
 
+	const structureHint =
+		input.profile === "changelog"
+			? "逐版本解读，覆盖每个分类的每一类变更（关键修复保留 PR/issue 链接）"
+			: "概览 + 重点（3-5 条详细）+ 其他（各一行）+ 小结";
+
 	return `本期分组：${input.group}（${input.windowLabel.zh} / ${input.windowLabel.en}）
+任务类型：${input.profile === "changelog" ? "版本更新解读（按版本逐条分析）" : "科技速览摘要"}
 抓取时间：${input.runAt.toISOString()}
 
-以下是本期新增条目（JSON，部分条目的 detail/meta 是原始抓取文本，可能含噪音）：
+以下是本期新增条目（JSON，条目的 detail 是原始抓取文本，可能含噪音；links 是可以引用的原始链接）：
 
 ${JSON.stringify(payload, null, 1)}
 
-请按系统提示的结构输出 JSON：{"zh":{"description":"…","body":"…"},"en":{"description":"…","body":"…"}}。
+请按系统提示的结构（${structureHint}）输出 JSON：
+{"zh":{"description":"…","body":"…"},"en":{"description":"…","body":"…"}}。
 description 控制在 80-150 字符，适合做列表页摘要。`;
 }
 

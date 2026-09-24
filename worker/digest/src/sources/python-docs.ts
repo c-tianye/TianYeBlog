@@ -1,7 +1,7 @@
-import { fetchJson, fetchResponse, fetchText, githubHeaders } from "../http";
-import { clamp, parseFeed, stripHtml } from "../rss";
-import { daysAgo } from "../time";
-import type { Source, SourceItem } from "../types";
+import { fetchJson, fetchResponse, fetchText, githubHeaders } from "../http.ts";
+import { clamp, parseFeed, stripHtml } from "../rss.ts";
+import { daysAgo } from "../time.ts";
+import type { Source, SourceItem } from "../types.ts";
 
 /** New PEPs are rare, so look back further than the group cadence. */
 const PEP_LOOKBACK_DAYS = 21;

@@ -1,6 +1,6 @@
-import { fetchJson, fetchText, USER_AGENT } from "../http";
-import { parseFeed } from "../rss";
-import { type Source, type SourceItem, SourceSkipped } from "../types";
+import { fetchJson, fetchText, USER_AGENT } from "../http.ts";
+import { parseFeed } from "../rss.ts";
+import { type Source, type SourceItem, SourceSkipped } from "../types.ts";
 
 /**
  * Reddit blocks datacenter IPs on the JSON API and rate-limits the public `.rss` endpoints,

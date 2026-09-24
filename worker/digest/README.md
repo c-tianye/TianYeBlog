@@ -25,8 +25,16 @@ Cron Trigger (Worker)
 | `hn` | `0 */5 * * *` | 每 5 小时 | Hacker News | `速览` `hn` / `digest` `hacker-news` |
 | `daily` | `0 1 * * *` | 每天 09:00 | Vite·React、GitHub 热榜、Python 官方文档、Reddit、~~推特~~ | `速览` `日报` / `digest` `daily` |
 | `weekly` | `0 2 * * 1` | 每周一 10:00 | HelloGitHub、Koala 聊开源 | `速览` `周报` / `digest` `weekly` |
+| `pi` | `0 */3 * * *` | 每 3 小时 | Pi 版本更新（pi.dev/changelog） | `速览` `pi` / `digest` `pi` |
 
-文章 slug：`digest-hn-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39`（中英共用同一 slug，语言切换按钮才能对上）。
+文章 slug：`digest-hn-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39` / `digest-pi-20260923-1500`（中英共用同一 slug，语言切换按钮才能对上）。
+
+两个写作模板（`groups.ts` 的 `promptProfile`）：
+
+| profile | 用于 | 正文结构 |
+| --- | --- | --- |
+| `digest` | hn / daily / weekly | 概览 → 重点（3-5 条详细）→ 其他（各一行）→ 小结 |
+| `changelog` | pi | 版本概览 → 逐版本解读（新增/改动/修复/破坏性变更，关键修复保留 PR 链接）→ 升级建议 |
 
 ## 来源与可用性
 
@@ -39,6 +47,7 @@ Cron Trigger (Worker)
 | `reddit` | Reddit 科技热榜 | 官方 OAuth（可选）/ 公开 `.rss` | 数据中心 IP 常被 429/403，失败只标记 `skipped` |
 | `hellogithub` | HelloGitHub | `hellogithub.com/rss` | 月刊，新一期出现时才产出入 |
 | `koala-oss` | Koala 聊开源 | `koala-oss.app/rss.xml` | 视频/推荐列表，按新条目去重 |
+| `pi-changelog` | Pi 版本更新 | `pi.dev/changelog.xml` + 每个版本 `pi.dev/changelog/releases/<version>` | 先从 RSS 取版本列表（按 URL 去重，**已发布过的版本不会再抓详情页**），再逐个读取 release 页面，解析出 New Features / Added / Changed / Fixed / Breaking Changes 各分类与条目，并把条目里的 PR/issue 链接一并交给模型引用 |
 | `twitter` | 推特热榜 | X API `/2/trends/by/woeid/…` | **默认关闭**：trends 端点不在免费层，见 `src/sources/twitter.ts` |
 
 ## 一次性配置
@@ -164,7 +173,8 @@ curl https://tianye-digest.<subdomain>.workers.dev/status   # 最近运行报告
 - **Gemini**：每次运行 1 次请求（中英在一次调用里返回）。free tier 的 `gemini-2.5-flash` 每天额度足够跑这些频率
 - **Workers 计划**：建议 Workers Paid。Free 计划每次调用只有 10ms CPU，抓 GitHub trending（约 550KB HTML）与 CPython changelog（约 6MB）可能超限；超限时该次调用直接失败（不会写坏内容）。`PYTHON_CHANGELOG` 因此默认关闭
 - **子请求数**：Free 计划每次调用上限 50。`hn` 分组约用 31（topstories + 30 item）+ Gemini + GitHub(6)，接近上限；如需扩来源请先减少候选数
-- **HTML 解析**：GitHub trending 无官方 API，走 HTML 解析，页面改版时靠 Search API 兜底
+- **HTML 解析**：GitHub trending 与 Pi release 页面走 HTMLRewriter 解析；Pi 页面解析失败时退化为 RSS 摘要，不会丢掉整轮
+- **链接守卫与内链**：正文里的链接必须来自本次抓取（条目 URL 或页面内联链接），改写过的会按标题自动修正，臆造的会被降级为纯文本
 - **Reddit**：RSS 经常限流；配置 OAuth 凭据后才算可靠
 - **推特热榜**：需要付费的 X API，默认关闭（代码里预留了接入点）
 

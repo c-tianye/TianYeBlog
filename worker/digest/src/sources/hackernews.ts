@@ -1,6 +1,6 @@
-import { fetchJson } from "../http";
-import { clamp, stripHtml } from "../rss";
-import type { Source, SourceItem } from "../types";
+import { fetchJson } from "../http.ts";
+import { clamp, stripHtml } from "../rss.ts";
+import type { Source, SourceItem } from "../types.ts";
 
 const API = "https://hacker-news.firebaseio.com/v0";
 /** Ignore low-signal stories so the model gets a clean list. */

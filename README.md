@@ -135,6 +135,7 @@ pnpm wrangler deploy
 | HN 热榜 | 每 5 小时 | Hacker News |
 | 日报 | 每天 09:00（CST） | Vite / React、GitHub 热榜、Python 官方文档与 PEP、Reddit |
 | 周报 | 每周一 10:00（CST） | HelloGitHub、Koala 聊开源 |
+| Pi 版本解读 | 每 3 小时 | [pi.dev/changelog](https://pi.dev/changelog)（逐版本读 release 页面） |
 
 生成的文章带上 `速览` / `digest` 标签（中英各一组），位于 `content/posts/` 与 `content/en/posts/`，因此也能在标签页里浏览：`/tags/速览/`。
 
