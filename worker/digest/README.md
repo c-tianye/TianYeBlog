@@ -5,7 +5,7 @@
 ```
 Cron Trigger (Worker)
   │
-  ├─ 按分组抓取来源（Hacker News / GitHub 热榜 / Vite·React / Python 官方文档 / Reddit / HelloGitHub / Koala）
+  ├─ 按分组抓取来源（Hacker News / 加密与金融 / AI 实验室与论文 / GitHub 热榜 / Vite·React / Python 官方文档 / Reddit / 工程与商业媒体 / HelloGitHub / Koala / Pi）
   ├─ 与 KV 里的「已收录」集合比对，只保留新条目
   ├─ Gemini 生成 {zh:{description,body}, en:{...}}（结构化 JSON 输出）
   ├─ 渲染 Markdown（frontmatter 由代码生成，不由模型生成）
@@ -18,25 +18,33 @@ Cron Trigger (Worker)
    https://blog.luxstarspace.com/posts/digest-…
 ```
 
-## 三个系列
+## 系列
 
 | 分组 | Cron (UTC) | 北京时间 | 来源 | 标签（中 / 英） |
 | --- | --- | --- | --- | --- |
 | `hn` | `0 */5 * * *` | 每 5 小时 | Hacker News | `速览` `hn` / `digest` `hacker-news` |
-| `daily` | `0 1 * * *` | 每天 09:00 | Vite·React、GitHub 热榜、Python 官方文档、Reddit、~~推特~~ | `速览` `日报` / `digest` `daily` |
+| `crypto` | `0 * * * *` | **每小时** | 加密资讯（CoinDesk/Cointelegraph/The Block/Decrypt/Blockworks）、金融宏观（CNBC/WSJ/MarketWatch/BBC/美联储/SEC） | `速览` `加密` `金融` / `digest` `crypto` `finance` |
+| `ai` | 共用 `0 * * * *` | **每 2 小时** | AI 实验室官方（OpenAI/Anthropic/Google AI/DeepMind/Hugging Face）、arXiv AI 论文 | `速览` `ai` / `digest` `ai` |
+| `daily` | `0 1 * * *` | 每天 09:00 | Vite·React、GitHub 热榜、Python 官方文档、Reddit、技术社区（Lobsters/InfoQ/Cloudflare）、科技媒体（TechCrunch/Ars Technica/The Verge）、~~推特~~ | `速览` `日报` / `digest` `daily` |
 | `weekly` | `0 2 * * 1` | 每周一 10:00 | HelloGitHub、Koala 聊开源 | `速览` `周报` / `digest` `weekly` |
 | `pi` | `0 */3 * * *` | 每 3 小时 | Pi 版本更新（pi.dev/changelog） | `速览` `pi` / `digest` `pi` |
 
-`pi` 分组与其他分组的差别：只回看 **72 小时**（不补发更早的历史版本）、**1 条新版本就发**（`minItems: 1`，而不是默认的 3），每个版本页单独读取并逐条解读。
+> **为什么 `ai` 没有自己的 cron**：Cloudflare 免费计划按**整个账号**限 5 个 cron 触发器。上表共 6 个分组，但只有 **5 个不同的 cron 表达式**（`ai` 复用 `crypto` 那一行，由 `evenHoursOnly: true` 过滤为只在偶数 UTC 小时触发）。注册时用 `cronList`（去重后）而非逐分组注册，所以免费计划也能全部跑起来。若升级到 Workers Paid，可把 `ai` 换回独立的 `0 */2 * * *`。
 
-文章 slug：`digest-hn-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39` / `digest-pi-20260923-1500`（中英共用同一 slug，语言切换按钮才能对上）。
+`pi` 分组与其他分组的差别：**1 条新版本就发**（`minItems: 1`，而不是默认的 3），每个版本页单独读取并逐条解读；去重以「已发布版本」集合为准（不依赖时间窗口），上游晚发也不会丢版本，单次最多补 3 个版本。
 
-两个写作模板（`groups.ts` 的 `promptProfile`）：
+`crypto` 与 `ai` 共享 cron，但**各自是独立的 `runDigest` 调用**（顺序执行）：各有独立的子请求预算与独立的 Gemini 调用。两者总子请求实测约 20 次，加上 Gemini 与 GitHub 提交仍远低于免费版每次调用 50 次的上限。两者的来源都保留了比 cron 周期更宽的回看窗口（`crypto` 12h / `ai` 48h），安静的一小时不会产出一篇空摘要，`minItems`（默认 3）仍会挡住无实质新增的轮次。
+
+文章 slug：`digest-hn-20260923-1400` / `digest-crypto-20260923-1400` / `digest-ai-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39` / `digest-pi-20260923-1500`（中英共用同一 slug，语言切换按钮才能对上）。
+
+写作模板（`groups.ts` 的 `promptProfile`）：
 
 | profile | 用于 | 正文结构 |
 | --- | --- | --- |
 | `digest` | hn / daily / weekly | 概览 → 重点（3-5 条详细）→ 其他（各一行）→ 小结 |
 | `changelog` | pi | 版本概览 → 逐版本解读（新增/改动/修复/破坏性变更，关键修复保留 PR 链接）→ 升级建议 |
+| `markets` | crypto | 概览 → 加密市场 → 金融与宏观 → 其他 → 小结；禁止编造数字、禁止投资建议与涨跌预测 |
+| `ai` | ai | 概览 → 官方动态 → 论文精选 → 其他 → 小结；**arXiv 条目必须标明是预印本**，不能写成已上线产品 |
 
 ## 来源与可用性
 
@@ -45,12 +53,17 @@ Cron Trigger (Worker)
 | `hackernews` | Hacker News | Firebase API（topstories + item） | 分数 ≥ 30，最多取 30 个候选，按分数排序后取 12 |
 | `vite-react` | Vite / React | `vite.dev/blog.rss`、`react.dev/rss.xml`、GitHub Releases | 回看 14 天；有 GITHUB_TOKEN 时 GitHub API 额度 5000/h |
 | `github-trending` | GitHub 热榜 | `github.com/trending?since=daily` HTML | 用 HTMLRewriter 解析；解析失败自动降级到 Search API |
-| `python-docs` | Python 官方技术文档 | PEP API + Python Insider RSS + CPython Releases | 另可开启 CPython changelog 抓取（见下） |
+| `python-docs` | Python 官方技术文档 | PEP API + Python Insider RSS + CPython Releases | 另可开启 CPython changelog 抓取（见下）。**注意 Python Insider 已于 2026-03 从 Blogger 搬到 `blog.python.org`**，旧地址 `pythoninsider.blogspot.com` 已停更且只剩一篇「我们搬家了」，必须用新 feed |
 | `reddit` | Reddit 科技热榜 | 官方 OAuth（可选）/ 公开 `.rss` | 数据中心 IP 常被 429/403，失败只标记 `skipped` |
 | `hellogithub` | HelloGitHub | `hellogithub.com/rss` | 月刊，新一期出现时才产出入 |
 | `koala-oss` | Koala 聊开源 | `koala-oss.app/rss.xml` | 视频/推荐列表，按新条目去重 |
-| `pi-changelog` | Pi 版本更新 | `pi.dev/changelog.xml` + 每个版本 `pi.dev/changelog/releases/<version>` | 先从 RSS 取版本列表（按 URL 去重，**已发布过的版本不会再抓详情页**），再逐个读取 release 页面，解析出 New Features / Added / Changed / Fixed / Breaking Changes 各分类与条目，并把条目里的 PR/issue 链接一并交给模型引用 |
-| `twitter` | 推特热榜 | X API `/2/trends/by/woeid/…` | **默认关闭**：trends 端点不在免费层，见 `src/sources/twitter.ts` |
+| `pi-changelog` | Pi 版本更新 | `pi.dev/changelog.xml` + 每个版本 `pi.dev/changelog/releases/<version>` | 先从 RSS 取版本列表（按 URL 去重，**已发布过的版本不会再抓详情页**），再逐个读取 release 页面，解析出 New Features / Added / Changed / Fixed / Breaking Changes 各分类与条目，并把条目里的 PR/issue 链接一并交给模型引用 || `twitter` | 推特热榜 | X API `/2/trends/by/woeid/…` | **默认关闭**：trends 端点不在免费层，见 `src/sources/twitter.ts` |
+| `crypto-news` | 加密货币资讯 | CoinDesk / Cointelegraph / The Block / Decrypt / Blockworks 的 RSS | 五个源合并为一个 source（共 5 次子请求），按时间排序，每个来源先预留固定条数以免一家刷屏；只需公开 RSS，无需密钥 |
+| `finance` | 金融与宏观 | MarketWatch 快讯 / WSJ 市场 / CNBC 市场 / CNBC 财经 / BBC 商业 / 美联储 / SEC 的 RSS | 回看 72 小时；**美联储与 SEC 享有保留名额**（`pin: true`），否则会被每小时刷新的新闻挤出榜单 |
+| `ai-labs` | AI 实验室官方动态 | OpenAI / Google AI / Google DeepMind / Hugging Face 的 RSS + Anthropic 新闻页 HTML | Anthropic **不提供 RSS**，用 HTMLRewriter 解析 `a[href^="/news/"] > time + title`；解析失败只丢该来源，不会拖垮整个 `ai` 分组 |
+| `ai-research` | arXiv AI 论文 | `export.arxiv.org/api/query`（cs.AI / cs.LG / cs.CL） | **不要用 `export.arxiv.org/rss/cs.AI`**：该 feed 经常整个为空（只有 `<channel>`、没有 `<item>`）；query API 稳定且带 `submittedDate`。三个分类会跨类去重 |
+| `tech-media` | 工程与技术社区 | Lobsters / InfoQ / Cloudflare 博客 | 补充 HN 之外的工程长文与基础设施动态 |
+| `tech-business` | 科技商业动态 | TechCrunch / Ars Technica / The Verge | 融资、产品发布、平台与政策新闻 |
 
 ## 一次性配置
 
@@ -146,6 +159,8 @@ pnpm dev                                      # http://localhost:8787
 
 ```bash
 curl -H 'x-digest-token: dev' 'http://localhost:8787/run?group=daily&dryRun=1&skipAi=1'
+curl -H 'x-digest-token: dev' 'http://localhost:8787/run?group=crypto&dryRun=1&debug=1'   # 加密/金融
+curl -H 'x-digest-token: dev' 'http://localhost:8787/run?group=ai&dryRun=1&debug=1'       # AI
 curl -H 'x-digest-token: dev' 'http://localhost:8787/run?group=weekly&skipAi=1'   # 真提交
 curl 'http://localhost:8787/status'                                               # 运行状态
 ```
@@ -172,10 +187,16 @@ curl https://tianye-digest.<subdomain>.workers.dev/status   # 最近运行报告
 
 ## 成本与限制
 
-- **Gemini**：每次运行 1 次请求（中英在一次调用里返回）。free tier 的 `gemini-2.5-flash` 每天额度足够跑这些频率
+- **Gemini**：每次运行 1 次请求（中英在一次调用里返回）。新增 `crypto`（每小时）与 `ai`（每 2 小时）后，**理论最大调用量为 24 + 12 = 36 次/天**，加上原有的 hn/daily/weekly/pi；free tier 的 `gemini-2.5-flash` 每日额度仍然够用。`minItems` 会挡掉无实质新增的轮次，实际调用次数通常明显低于上限
 - **Workers 计划**：建议 Workers Paid。Free 计划每次调用只有 10ms CPU，抓 GitHub trending（约 550KB HTML）与 CPython changelog（约 6MB）可能超限；超限时该次调用直接失败（不会写坏内容）。`PYTHON_CHANGELOG` 因此默认关闭
-- **子请求数**：Free 计划每次调用上限 50。`hn` 分组约用 31（topstories + 30 item）+ Gemini + GitHub(6)，接近上限；如需扩来源请先减少候选数
-- **HTML 解析**：GitHub trending 与 Pi release 页面走 HTMLRewriter 解析；Pi 页面解析失败时退化为 RSS 摘要，不会丢掉整轮
+- **子请求数**：Free 计划**每次调用**上限 50。`crypto` 与 `ai` 虽然共享 cron，但它们是**两次独立的 `runDigest` 调用**，各自重新计预算；实测两个分组的来源合计约 20 次子请求。`hn` 仍然最重（约 31 + Gemini + GitHub(6)），接近上限；如需再扩来源请先减少 HN 的候选数
+- **Cron 数量**：Cloudflare **免费计划按整个账号限 5 个 cron 触发器**（不是每个 Worker 5 个）。本项目有 **6 个分组但只注册 5 个 cron**：`ai` 复用 `crypto` 的 `0 * * * *`，用 `evenHoursOnly` 过滤为每 2 小时一次，因此**免费计划也能完整部署**。若升级 Workers Paid（5 美元/月，上限 1000 个），可把 `ai` 改回独立的 `0 */2 * * *` 而不影响其他部分。`/status` 的 `crons` 字段会返回实际注册的去重列表（正好 5 个）。
+- **`windowHours` 的陷阱**：`since` 用的是 **source 的 `windowHours`**（不是 group 的）。用「时间窗口」做去重的来源，窗口必须**宽于上游的发布间隔**，否则上游一旦晚发、内容就会**永久丢失**——`pi-changelog` 曾因 72 小时窗口丢掉 0.86.1 / 0.87.0 / 0.87.1 三个版本。Pi 现在改为以 `seen` 为主要去重手段、窗口放宽到 30 天，`test/sources.test.ts` 会拦住同类回归
+- **HTML 解析**：GitHub trending、Pi release 页面与 Anthropic 新闻页走 HTMLRewriter 解析；任一页面解析失败只会丢该来源，不会丢掉整轮
+- **已停更/不可用的源**：
+  - `pythoninsider.blogspot.com`（Python Insider 旧地址，2026-03 起停更，只剩一篇「我们搬家了」）→ 已换为 `blog.python.org/rss.xml`
+  - `finance.yahoo.com/news/rssindex`（滞后约 4 天）、`feeds.a.dj.com/rss/RSSMarketsMain.xml`（停留在 2025-01）→ 已弃用，改用 `feeds.content.dowjones.io` 系列
+  - Bloomberg / Reuters 封数据中心 IP，无可用公开 feed
 - **链接守卫与内链**：正文里的链接必须来自本次抓取（条目 URL 或页面内联链接），改写过的会按标题自动修正，臆造的会被降级为纯文本
 - **Reddit**：RSS 经常限流；配置 OAuth 凭据后才算可靠
 - **推特热榜**：需要付费的 X API，默认关闭（代码里预留了接入点）
@@ -185,9 +206,9 @@ curl https://tianye-digest.<subdomain>.workers.dev/status   # 最近运行报告
 ```
 src/
   index.ts          # fetch(/status,/run) + scheduled(cron) 编排
-  groups.ts         # 三个系列的定义与 cron 映射
+  groups.ts         # 各系列（hn/crypto/ai/daily/weekly/pi）的定义与 cron 映射
   sources/          # 每个来源一个文件，统一 Source 接口
-  summarize.ts      # Gemini 调用与结构化输出校验
+  summarize.ts      # Gemini 调用、写作模板与结构化输出校验
   render.ts         # Markdown + frontmatter 渲染（slug 也在这里）
   github.ts         # Git Data API：一次 commit 提交多个文件
   state.ts          # KV：去重集合 + 运行报告
