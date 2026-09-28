@@ -9,10 +9,16 @@ const NEWS_LOOKBACK_DAYS = 14;
 const CHANGELOG_ITEMS = 6;
 
 const PEP_API = "https://peps.python.org/api/peps.json";
-const PYTHON_INSIDER = "https://pythoninsider.blogspot.com/feeds/posts/default?alt=rss";
+/**
+ * Python Insider moved off Blogger in March 2026 and the old endpoint is frozen at the
+ * "we've moved" post, so the new canonical feed is used instead. Verified to carry current posts.
+ * See https://blog.python.org/rss.xml.
+ */
+const PYTHON_INSIDER = "https://blog.python.org/rss.xml";
 const CHANGELOG_URL = "https://docs.python.org/3/whatsnew/changelog.html";
 
 interface Pep {
+	/** `%d-%b-%Y`, e.g. "20-Sep-2026" — parsed reliably by V8 and workerd alike */
 	created?: string;
 	status?: string;
 	title?: string;

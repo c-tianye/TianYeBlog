@@ -38,12 +38,15 @@ export const piChangelog: Source = {
 	names: { zh: "Pi 版本更新", en: "Pi releases" },
 	homepage: "https://pi.dev/changelog",
 	enabled: true,
-	// the orchestrator uses the *source's* window, not the group's: keep it at 3 days so older
-	// releases are never backfilled (releases land roughly daily)
-	windowHours: 72,
+	// Releases land on an irregular schedule (observed gaps of 2 weeks), so a fixed lookback
+	// window is the wrong filter: a version older than the window was silently dropped forever
+	// (0.86.1/0.87.0/0.87.1 were all lost this way). De-duplication is driven by `seen` instead —
+	// the window only bounds which unseen versions may be backfilled on a fresh KV namespace,
+	// so a first deploy does not publish the entire release history at once.
+	windowHours: 24 * 30,
 	async fetch({ seen, since }: SourceContext) {
 		const entries = parseFeed(await fetchText(FEED), { summaryLimit: 600 })
-			// newest first, as published in the feed
+			// published order is newest first; keep only versions that could still be news
 			.filter((entry) => !entry.date || entry.date >= since);
 
 		// the orchestrator would de-duplicate later, but detail pages must not be fetched for
