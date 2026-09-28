@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cronList, groupList, groupsFromCron } from "../src/groups.ts";
+import { cronList, groupList, groups, groupsFromCron } from "../src/groups.ts";
 import { slugFor } from "../src/render.ts";
 import { sources } from "../src/sources/index.ts";
 import type { Group } from "../src/types.ts";
@@ -50,25 +50,90 @@ test("every configured cron maps to a group, and every group has a cron", () => 
 	assert.equal(groupsFromCron("0 9 * * *", new Date()).length, 0);
 });
 
-/** `ai` shares the hourly `crypto` cron and must only fire on even hours (its stated cadence). */
-test("even-hours-only groups fire on a 2-hour cadence, not hourly", () => {
-	const at = (hour: number) => new Date(Date.UTC(2026, 8, 28, hour, 0, 0));
+/** `weekly` shares the `pi` cron and must still fire exactly once a week (Mon 02:00 UTC). */
+test("only-at groups keep their own cadence while sharing a trigger", () => {
+	const at = (day: number, hour: number) => new Date(Date.UTC(2026, 8, 28 + day, hour, 0, 0));
+	// 2026-09-28 is a Monday (getUTCDay() === 1)
+	assert.equal(at(0, 2).getUTCDay(), 1, "fixture must start on a Monday");
 
-	for (let hour = 0; hour < 24; hour += 1) {
-		const fired = groupsFromCron("0 * * * *", at(hour));
-		assert.ok(fired.includes("crypto"), `crypto must run every hour (missed ${hour}:00)`);
-		assert.equal(
-			fired.includes("ai"),
-			hour % 2 === 0,
-			`ai should ${hour % 2 === 0 ? "" : "not "}run at ${hour}:00`,
+	// the pi cron fires every 3 hours; weekly must not ride along on all of them
+	for (const hour of [0, 3, 6, 9, 12, 18, 21]) {
+		assert.deepEqual(
+			groupsFromCron("0 */3 * * *", at(0, hour)),
+			["pi"],
+			`weekly must not run on Monday ${hour}:00`,
 		);
 	}
 
-	// exactly half the hourly slots, i.e. every 2 hours
-	const aiRuns = Array.from({ length: 24 }, (_, h) => groupsFromCron("0 * * * *", at(h))).filter(
-		(fired) => fired.includes("ai"),
-	).length;
-	assert.equal(aiRuns, 12, "ai must run 12 times a day (every 2 hours)");
+	// exactly its original slot: Monday 02:00 UTC = 10:00 CST
+	assert.deepEqual(groupsFromCron("0 */3 * * *", at(0, 2)), ["weekly", "pi"]);
+
+	// once per week, not once per day
+	assert.deepEqual(groupsFromCron("0 */3 * * *", at(1, 2)), ["pi"], "not on Tuesday");
+	assert.deepEqual(groupsFromCron("0 */3 * * *", at(7, 2)), ["weekly", "pi"], "next Monday");
+
+	let weeklyRuns = 0;
+	for (let day = 0; day < 21; day += 1) {
+		for (let hour = 0; hour < 24; hour += 1) {
+			if (groupsFromCron("0 */3 * * *", at(day, hour)).includes("weekly")) weeklyRuns += 1;
+		}
+	}
+	assert.equal(weeklyRuns, 3, "weekly must run once per week (3 times across 21 days)");
+});
+
+/**
+ * Regression guard for a live failure: `crypto` and `ai` shared one cron, and the 50-subrequest
+ * limit applies to the whole scheduled invocation — not per group — so the second group died with
+ * "Too many subrequests by single Worker invocation".
+ *
+ * These are per-run source counts. `gitCommit` covers fileExists x2 + the 7 Git Data API calls,
+ * and each group makes one Gemini request.
+ */
+test("groups sharing a cron stay inside the 50-subrequest invocation budget", () => {
+	const GIT_COMMIT = 9;
+	const GEMINI = 1;
+	const BUDGET = 50;
+
+	// Measured per run; keep these in step with the sources if their feed lists change.
+	const sourceCount: Record<string, number> = {
+		ai: 8, // ai-labs 5 feeds (incl. the Anthropic page) + ai-research 3 arXiv queries
+		crypto: 12, // crypto-news 5 + finance 7
+		daily: 16,
+		hn: 31,
+		pi: 3,
+		weekly: 2,
+	};
+
+	const costOf = (group: string) => (sourceCount[group] ?? 0) + GEMINI + GIT_COMMIT;
+
+	// every group on its own must fit (a single-trigger group is still one invocation)
+	for (const group of groupList) {
+		assert.ok(
+			costOf(group.id) < BUDGET,
+			`${group.id} alone costs ${costOf(group.id)} subrequests (limit ${BUDGET})`,
+		);
+	}
+
+	// and every sharing combination must fit together
+	for (const cron of cronList) {
+		const together = groupList
+			.filter((group) => group.cron === cron)
+			.reduce((sum, group) => sum + costOf(group.id), 0);
+		assert.ok(
+			together < BUDGET,
+			`cron "${cron}" runs ${groupList
+				.filter((g) => g.cron === cron)
+				.map((g) => g.id)
+				.join("+")} = ${together} subrequests (limit ${BUDGET})`,
+		);
+	}
+
+	// the specific pairing that broke in production must not come back
+	assert.notEqual(
+		groups.crypto.cron,
+		groups.ai.cron,
+		"crypto and ai must not share a trigger: together they exceed the subrequest budget",
+	);
 });
 
 /** A source id typo in groups.ts is only reported as a console.error at run time. */

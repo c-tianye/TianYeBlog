@@ -24,16 +24,21 @@ Cron Trigger (Worker)
 | --- | --- | --- | --- | --- |
 | `hn` | `0 */5 * * *` | 每 5 小时 | Hacker News | `速览` `hn` / `digest` `hacker-news` |
 | `crypto` | `0 * * * *` | **每小时** | 加密资讯（CoinDesk/Cointelegraph/The Block/Decrypt/Blockworks）、金融宏观（CNBC/WSJ/MarketWatch/BBC/美联储/SEC） | `速览` `加密` `金融` / `digest` `crypto` `finance` |
-| `ai` | 共用 `0 * * * *` | **每 2 小时** | AI 实验室官方（OpenAI/Anthropic/Google AI/DeepMind/Hugging Face）、arXiv AI 论文 | `速览` `ai` / `digest` `ai` |
+| `ai` | `0 */2 * * *` | **每 2 小时** | AI 实验室官方（OpenAI/Anthropic/Google AI/DeepMind/Hugging Face）、arXiv AI 论文 | `速览` `ai` / `digest` `ai` |
 | `daily` | `0 1 * * *` | 每天 09:00 | Vite·React、GitHub 热榜、Python 官方文档、Reddit、技术社区（Lobsters/InfoQ/Cloudflare）、科技媒体（TechCrunch/Ars Technica/The Verge）、~~推特~~ | `速览` `日报` / `digest` `daily` |
-| `weekly` | `0 2 * * 1` | 每周一 10:00 | HelloGitHub、Koala 聊开源 | `速览` `周报` / `digest` `weekly` |
+| `weekly` | 共用 `0 */3 * * *` | 每周一 10:00 | HelloGitHub、Koala 聊开源 | `速览` `周报` / `digest` `weekly` |
 | `pi` | `0 */3 * * *` | 每 3 小时 | Pi 版本更新（pi.dev/changelog） | `速览` `pi` / `digest` `pi` |
 
-> **为什么 `ai` 没有自己的 cron**：Cloudflare 免费计划按**整个账号**限 5 个 cron 触发器。上表共 6 个分组，但只有 **5 个不同的 cron 表达式**（`ai` 复用 `crypto` 那一行，由 `evenHoursOnly: true` 过滤为只在偶数 UTC 小时触发）。注册时用 `cronList`（去重后）而非逐分组注册，所以免费计划也能全部跑起来。若升级到 Workers Paid，可把 `ai` 换回独立的 `0 */2 * * *`。
+> **为什么有两个分组共用 cron**：Cloudflare 免费计划按**整个账号**限 5 个 cron 触发器，但共有 6 个分组。解决办法是让一个轻量分组搭另一组的触发器：
+>
+> - `weekly` 挂到 `pi` 的 `0 */3 * * *` 上，用 `onlyAt: { weekday: 1, hour: 2 }` 限定为**只在周一 02:00 UTC（10:00 CST，即它原本的时间）触发一次**，而不是当天每 3 小时都跑。
+> - 注册时用 `cronList`（去重后）而非逐分组注册，所以正好是 5 条。若升级到 Workers Paid（上限 1000），可给 `weekly` 换回独立的 `0 2 * * 1`。
+>
+> ⚠️ **不要随便把两个“重”分组合并到一个 cron**：50 次子请求的限制是按**整次 invocation** 计的，不是按分组。曾经把 `crypto` + `ai` 放在同一个 `0 * * * *` 下，结果第二个分组在线报 `Too many subrequests by single Worker invocation`。现在只允许真正小的分组搭车（`pi` 3 个来源 + `weekly` 2 个），`test/render.test.ts` 里有专门断言防止再次过配。
 
 `pi` 分组与其他分组的差别：**1 条新版本就发**（`minItems: 1`，而不是默认的 3），每个版本页单独读取并逐条解读；去重以「已发布版本」集合为准（不依赖时间窗口），上游晚发也不会丢版本，单次最多补 3 个版本。
 
-`crypto` 与 `ai` 共享 cron，但**各自是独立的 `runDigest` 调用**（顺序执行）：各有独立的子请求预算与独立的 Gemini 调用。两者总子请求实测约 20 次，加上 Gemini 与 GitHub 提交仍远低于免费版每次调用 50 次的上限。两者的来源都保留了比 cron 周期更宽的回看窗口（`crypto` 12h / `ai` 48h），安静的一小时不会产出一篇空摘要，`minItems`（默认 3）仍会挡住无实质新增的轮次。
+`crypto` 与 `ai` 各自独占 cron（各自一次 invocation、各自 50 次子请求预算、各自独立的 Gemini 调用）。两者的来源都保留了比 cron 周期更宽的回看窗口（`crypto` 12h / `ai` 48h），安静的一小时不会产出一篇空摘要，`minItems`（默认 3）仍会挡住无实质新增的轮次。
 
 文章 slug：`digest-hn-20260923-1400` / `digest-crypto-20260923-1400` / `digest-ai-20260923-1400` / `digest-daily-20260923` / `digest-weekly-2026-w39` / `digest-pi-20260923-1500`（中英共用同一 slug，语言切换按钮才能对上）。
 
@@ -189,8 +194,9 @@ curl https://tianye-digest.<subdomain>.workers.dev/status   # 最近运行报告
 
 - **Gemini**：每次运行 1 次请求（中英在一次调用里返回）。新增 `crypto`（每小时）与 `ai`（每 2 小时）后，**理论最大调用量为 24 + 12 = 36 次/天**，加上原有的 hn/daily/weekly/pi；free tier 的 `gemini-2.5-flash` 每日额度仍然够用。`minItems` 会挡掉无实质新增的轮次，实际调用次数通常明显低于上限
 - **Workers 计划**：建议 Workers Paid。Free 计划每次调用只有 10ms CPU，抓 GitHub trending（约 550KB HTML）与 CPython changelog（约 6MB）可能超限；超限时该次调用直接失败（不会写坏内容）。`PYTHON_CHANGELOG` 因此默认关闭
-- **子请求数**：Free 计划**每次调用**上限 50。`crypto` 与 `ai` 虽然共享 cron，但它们是**两次独立的 `runDigest` 调用**，各自重新计预算；实测两个分组的来源合计约 20 次子请求。`hn` 仍然最重（约 31 + Gemini + GitHub(6)），接近上限；如需再扩来源请先减少 HN 的候选数
-- **Cron 数量**：Cloudflare **免费计划按整个账号限 5 个 cron 触发器**（不是每个 Worker 5 个）。本项目有 **6 个分组但只注册 5 个 cron**：`ai` 复用 `crypto` 的 `0 * * * *`，用 `evenHoursOnly` 过滤为每 2 小时一次，因此**免费计划也能完整部署**。若升级 Workers Paid（5 美元/月，上限 1000 个），可把 `ai` 改回独立的 `0 */2 * * *` 而不影响其他部分。`/status` 的 `crons` 字段会返回实际注册的去重列表（正好 5 个）。
+- **子请求数**：Free 计划**每次调用**上限 50。各分组现在基本独占 cron，只有 `pi` + `weekly` 共享（周一同时跑约 25 次）。`hn` 最重（≈ 41），如需再扩来源请先减少 HN 的候选数
+- **Cron 数量**：Cloudflare **免费计划按整个账号限 5 个 cron 触发器**（不是每个 Worker 5 个）。本项目有 **6 个分组但只注册 5 个 cron**：`weekly` 搭在 `pi` 的 `0 */3 * * *` 上，用 `onlyAt` 限定为只在周一 02:00 UTC（10:00 CST）触发一次，因此**免费计划也能完整部署**。升级 Workers Paid（5 美元/月，上限 1000）后，可把 `weekly` 换回独立的 `0 2 * * 1`。`/status` 的 `crons` 字段返回实际注册的去重列表（正好 5 个）。
+- **子请求数与 cron 共享的约束（重要）**：Free 计划每次 invocation 上限 50 次子请求，**这个限制是按整次 invocation 计的，不是按分组**。所以只有当**两个分组都很轻**时才能共用一个 cron。当前 `pi`（3 个来源）+ `weekly`（2 个来源）在周一同时跑约 25 次，安全；而 `crypto`（12）+ `ai`（8）曾经放一起，第二个分组在线报 `Too many subrequests by single Worker invocation`。各分组单独估算（含 Gemini 与 GitHub 提交约 9 次）：`hn` ≈ 41、`daily` ≈ 26、`crypto` ≈ 22、`ai` ≈ 18、`pi` ≈ 13、`weekly` ≈ 12。`test/render.test.ts` 会断言所有共享组合都在 50 以内
 - **`windowHours` 的陷阱**：`since` 用的是 **source 的 `windowHours`**（不是 group 的）。用「时间窗口」做去重的来源，窗口必须**宽于上游的发布间隔**，否则上游一旦晚发、内容就会**永久丢失**——`pi-changelog` 曾因 72 小时窗口丢掉 0.86.1 / 0.87.0 / 0.87.1 三个版本。Pi 现在改为以 `seen` 为主要去重手段、窗口放宽到 30 天，`test/sources.test.ts` 会拦住同类回归
 - **HTML 解析**：GitHub trending、Pi release 页面与 Anthropic 新闻页走 HTMLRewriter 解析；任一页面解析失败只会丢该来源，不会丢掉整轮
 - **已停更/不可用的源**：

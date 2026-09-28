@@ -150,8 +150,8 @@ export default {
 			return;
 		}
 
-		// Groups sharing a cron run sequentially: each `runDigest` needs its own subrequest budget
-		// and its own Gemini call, so they must not be interleaved.
+		// Groups sharing a cron run sequentially. NOTE: the 50-subrequest limit applies to the whole
+		// invocation, not per group, so only light groups may share a trigger — see groups.ts.
 		for (const group of groupIds) {
 			try {
 				const result = await runDigest(env, {

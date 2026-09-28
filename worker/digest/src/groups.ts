@@ -22,10 +22,11 @@ export interface GroupConfig {
 	 */
 	minItems?: number;
 	/**
-	 * Only fire on even UTC hours. Lets a group share another group's hourly cron while keeping its
-	 * own slower cadence, which is how `ai` fits inside the free plan's 5-trigger account limit.
+	 * Only fire at this exact UTC weekday (0 = Sunday) and hour. `weekly` uses { weekday: 1,
+	 * hour: 2 } so that sharing the `pi` trigger (every 3 hours) still lands it on Monday
+	 * 02:00 UTC / 10:00 CST — its original slot — instead of every 3 hours that day.
 	 */
-	evenHoursOnly?: boolean;
+	onlyAt?: { weekday: number; hour: number };
 }
 
 export const groups: Record<Group, GroupConfig> = {
@@ -59,7 +60,8 @@ export const groups: Record<Group, GroupConfig> = {
 	},
 	weekly: {
 		id: "weekly",
-		cron: "0 2 * * 1",
+		cron: "0 */3 * * *",
+		onlyAt: { weekday: 1, hour: 2 },
 		windowHours: 24 * 7,
 		sourceIds: ["hellogithub", "koala-oss"],
 		title: { zh: "科技速览 · 周报", en: "Tech Digest · Weekly" },
@@ -83,10 +85,6 @@ export const groups: Record<Group, GroupConfig> = {
 	// Market-moving news is only useful while it is fresh, so this runs every hour. A quiet hour
 	// is fine: the sources keep a wider lookback window, and minItems (default 3) still gates
 	// publication when nothing new happened.
-	//
-	// The free Workers plan only allows 5 cron triggers per *account* (not per Worker), and the
-	// account already needs hn/daily/weekly/pi. This cron therefore also drives the `ai` group on
-	// even UTC hours (see `evenHoursOnly`), which keeps every series running without a 6th cron.
 	crypto: {
 		id: "crypto",
 		cron: "0 * * * *",
@@ -98,12 +96,15 @@ export const groups: Record<Group, GroupConfig> = {
 		promptProfile: "markets",
 	},
 	// Lab announcements and papers appear a few times a day at most, so every 2 hours is enough to
-	// be timely without spending Gemini quota on empty rounds. It shares the `crypto` cron and is
-	// skipped on odd hours, which yields the same 2-hour cadence at no extra trigger cost.
+	// be timely without spending Gemini quota on empty rounds.
+	//
+	// Kept on its own cron on purpose: one scheduled invocation shares a single 50-subrequest
+	// budget across every group it runs, so pairing `ai` with `crypto` made the second group fail
+	// with "Too many subrequests". Only genuinely small groups may share a trigger:
+	// `weekly` (2 feeds) rides along with `pi` (1 source), which stays far inside the budget.
 	ai: {
 		id: "ai",
-		cron: "0 * * * *",
-		evenHoursOnly: true,
+		cron: "0 */2 * * *",
 		windowHours: 48,
 		sourceIds: ["ai-labs", "ai-research"],
 		title: { zh: "AI 速览 · 前沿动态", en: "AI Digest · Frontier" },
@@ -118,22 +119,26 @@ export const groupList = Object.values(groups);
 /**
  * Crons that actually have to be registered with Cloudflare.
  *
- * `crypto` and `ai` intentionally share `0 * * * *`, so the distinct list is 5 entries — exactly
- * the free-plan account limit. Registering per group instead would need 6 triggers and fail.
+ * `weekly` shares `pi`'s cron, so the distinct list stays at 5 entries — exactly the free-plan
+ * account limit. Registering per group instead would need 6 triggers and fail.
  */
 export const cronList = [...new Set(groupList.map((group) => group.cron))];
 
 /**
  * Groups triggered by a cron expression.
  *
- * A cron can drive several groups (see `cronList`). `evenHoursOnly` groups are filtered out on
- * odd hours so they keep their own slower cadence while sharing the hourly trigger.
+ * A cron can drive several groups (see `cronList`), which is how the series fit in the free plan's
+ * 5 triggers. `onlyAt` groups are filtered out at every other instant, so they keep their own
+ * slower cadence while sharing another group's trigger.
  */
 export function groupsFromCron(cron: string, at: Date): Group[] {
+	const weekday = at.getUTCDay();
 	const hour = at.getUTCHours();
 	return groupList
 		.filter((group) => group.cron === cron)
-		.filter((group) => !group.evenHoursOnly || hour % 2 === 0)
+		.filter(
+			(group) => !group.onlyAt || (group.onlyAt.weekday === weekday && group.onlyAt.hour === hour),
+		)
 		.map((group) => group.id);
 }
 
