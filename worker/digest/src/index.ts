@@ -1,6 +1,6 @@
 import type { Env } from "./env.ts";
 import { commitFiles, fileExists } from "./github.ts";
-import { groupConfig, groupFromCron, groupList } from "./groups.ts";
+import { cronList, groupConfig, groupList, groupsFromCron } from "./groups.ts";
 import { repairSummaryLinks } from "./links.ts";
 import { buildPost, buildRawSummary, slugFor } from "./render.ts";
 import { sources } from "./sources/index.ts";
@@ -49,6 +49,8 @@ export default {
 		if (url.pathname === "/" || url.pathname === "/status") {
 			return json({
 				enabled: env.DIGEST_ENABLED !== "false",
+				// distinct cron expressions that must be registered with Cloudflare (free plan: max 5)
+				crons: cronList,
 				groups: groupList.map((group) => ({
 					cadence: group.cadence,
 					cron: group.cron,
@@ -120,7 +122,10 @@ export default {
 			}
 			const group = url.searchParams.get("group") as Group | null;
 			if (!group || !groupConfig(group)) {
-				return json({ error: "group must be one of hn|daily|weekly", ok: false }, 400);
+				return json(
+					{ error: `group must be one of ${groupList.map((g) => g.id).join("|")}`, ok: false },
+					400,
+				);
 			}
 
 			const result = await runDigest(env, {
@@ -138,20 +143,31 @@ export default {
 	},
 
 	async scheduled(controller: ScheduledController, env: Env): Promise<void> {
-		const group = groupFromCron(controller.cron);
-		if (!group) {
-			console.error(`digest: no group configured for cron "${controller.cron}"`);
+		const now = new Date();
+		const groupIds = groupsFromCron(controller.cron, now);
+		if (groupIds.length === 0) {
+			console.log(`digest: cron "${controller.cron}" has no group due at this hour`);
 			return;
 		}
-		const result = await runDigest(env, {
-			debug: false,
-			dryRun: false,
-			force: false,
-			group,
-			skipAi: false,
-			trigger: `cron:${controller.cron}`,
-		});
-		console.log(`digest: ${JSON.stringify(result.report)}`);
+
+		// Groups sharing a cron run sequentially: each `runDigest` needs its own subrequest budget
+		// and its own Gemini call, so they must not be interleaved.
+		for (const group of groupIds) {
+			try {
+				const result = await runDigest(env, {
+					debug: false,
+					dryRun: false,
+					force: false,
+					group,
+					skipAi: false,
+					trigger: `cron:${controller.cron}`,
+				});
+				console.log(`digest: ${JSON.stringify(result.report)}`);
+			} catch (error) {
+				// one failing group must not stop the others sharing this cron
+				console.error(`digest: ${group} failed: ${(error as Error).message}`);
+			}
+		}
 	},
 } satisfies ExportedHandler<Env>;
 

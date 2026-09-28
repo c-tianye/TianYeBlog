@@ -120,9 +120,78 @@ const CHANGELOG_INSTRUCTION = `你是一名技术编辑，为一个个人技术�
 **New** / **Changed** / **Fixed** / **Breaking** / ## Upgrade notes，
 列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
 
-const SYSTEM_INSTRUCTIONS: Record<PromptProfile, string> = {
+/**
+ * Used by the "crypto" series. Market news is only useful with context, so the model is asked for
+ * the concrete facts (numbers, names, dates) and why they matter — never for price predictions.
+ */
+const MARKETS_INSTRUCTION = `你是一名金融新闻编辑，为一个个人博客撰写「市场速览 · 加密与金融」摘要。同时输出中文与英文两个版本。
+
+硬性要求：
+- 只能使用用户提供的条目。**绝对不要编造价格、涨跌幅、市值、机构名称、日期或链接**；
+  输入里没有的数字一律不要写，宁可写得笼统。
+- 链接必须逐字复制输入里的 URL（含百分号编码与查询串），不要改写或补全。
+- 不要给出投资建议、目标价或涨跌预测；只陈述「发生了什么」与「市场为什么关注」。
+- 不炒作、不使用「暴涨/暴跌/暴富」这类煽动性词汇；用中性、事实性的陈述。
+- 每个标题（## / ###）后空一行再写正文；不要输出 frontmatter 或一级标题。
+- 中文用简体中文；英文用自然、地道的英文，不要逐字直译。
+- 只使用简体中文和英文，不要混入其它文字系统。
+
+中文正文结构：
+## 概览
+（2-3 句：本期加密与宏观市场最值得注意的动向）
+## 加密市场
+### [条目标题](原始链接)
+（1-2 句：发生了什么 + 为什么重要；有确切数字才写）
+## 金融与宏观
+### [条目标题](原始链接)
+（1-2 句说明）
+## 其他
+- [条目标题](原始链接) —— 一句话
+## 小结
+（1 句：本期整体基调，不预测后市）
+
+如果某一分区在输入里没有条目，就整节省略，不要写「本期无内容」。
+英文正文结构与上面一一对应：## Overview / ## Crypto markets / ## Finance & macro / ## Also worth reading / ## Takeaway，
+列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
+
+/**
+ * Used by the "ai" series. Mixes lab announcements with arXiv abstracts, so the model must not
+ * present a preprint as a shipped product (a real failure mode when both are in one prompt).
+ */
+const AI_INSTRUCTION = `你是一名 AI 领域编辑，为一个个人技术博客撰写「AI 速览 · 前沿动态」。同时输出中文与英文两个版本。
+
+硬性要求：
+- 只能使用用户提供的条目，不要编造模型名、版本号、基准分数、机构或链接。
+- **区分「官方发布」与「论文预印本」**：arXiv 条目是未经同行评审的预印本，必须写明这是论文
+  （如「一篇新论文提出…」），不要写成已经上线的产品或功能；官方博客条目可以按官方说法陈述。
+- 链接必须逐字复制输入里的 URL，不要改写或补全。
+- 每个标题（## / ###）后空一行再写正文；不要输出 frontmatter 或一级标题。
+- 不要复述条目标题，每条 1-2 句说明「它解决了什么 / 为什么值得看」。
+- 只使用简体中文和英文，不要混入其它文字系统。
+
+中文正文结构：
+## 概览
+（2-3 句：本期 AI 领域的主要看点）
+## 官方动态
+### [条目标题](原始链接)
+（1-2 句说明：哪家实验室发布了什么）
+## 论文精选
+### [条目标题](原始链接)
+（1-2 句说明：研究问题与主要结论）
+## 其他
+- [条目标题](原始链接) —— 一句话
+## 小结
+（1 句总结）
+
+如果某一分区在输入里没有条目，就整节省略。
+英文正文结构与上面一一对应：## Overview / ## From the labs / ## Papers / ## Also worth reading / ## Takeaway，
+列表分隔符用 "—"（单个 em dash），不要用中文的 "——"。`;
+
+export const SYSTEM_INSTRUCTIONS: Record<PromptProfile, string> = {
+	ai: AI_INSTRUCTION,
 	changelog: CHANGELOG_INSTRUCTION,
 	digest: DIGEST_INSTRUCTION,
+	markets: MARKETS_INSTRUCTION,
 };
 
 export async function summarise(env: Env, input: SummariseInput): Promise<Summary> {
@@ -225,7 +294,7 @@ async function callGemini(apiKey: string, model: string, input: SummariseInput):
 	throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
-function buildPrompt(input: SummariseInput): string {
+export function buildPrompt(input: SummariseInput): string {
 	const payload = {
 		group: input.group,
 		runAt: input.runAt.toISOString(),
@@ -241,10 +310,22 @@ function buildPrompt(input: SummariseInput): string {
 	const structureHint =
 		input.profile === "changelog"
 			? "逐版本解读，覆盖每个分类的每一类变更（关键修复保留 PR/issue 链接）"
-			: "概览 + 重点（3-5 条详细）+ 其他（各一行）+ 小结";
+			: input.profile === "markets"
+				? "概览 + 加密市场 + 金融宏观 + 其他 + 小结（不确定的数字不要写，不预测后市）"
+				: input.profile === "ai"
+					? "概览 + 官方动态 + 论文精选 + 其他 + 小结（论文必须标明是预印本）"
+					: "概览 + 重点（3-5 条详细）+ 其他（各一行）+ 小结";
 
 	return `本期分组：${input.group}（${input.windowLabel.zh} / ${input.windowLabel.en}）
-任务类型：${input.profile === "changelog" ? "版本更新解读（按版本逐条分析）" : "科技速览摘要"}
+任务类型：${
+		input.profile === "changelog"
+			? "版本更新解读（按版本逐条分析）"
+			: input.profile === "markets"
+				? "加密与金融市况摘要（只陈述事实，不给投资建议）"
+				: input.profile === "ai"
+					? "AI 前沿动态摘要（区分官方发布与预印本论文）"
+					: "科技速览摘要"
+	}
 抓取时间：${input.runAt.toISOString()}
 
 以下是本期新增条目（JSON，条目的 detail 是原始抓取文本，可能含噪音；links 是可以引用的原始链接）：

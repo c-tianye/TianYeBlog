@@ -1,7 +1,7 @@
 import type { Env } from "./env.ts";
 
-/** The three digest series (see wrangler.jsonc `crons`) */
-export type Group = "hn" | "daily" | "weekly" | "pi";
+/** The digest series (see wrangler.jsonc `crons`) */
+export type Group = "hn" | "daily" | "weekly" | "pi" | "crypto" | "ai";
 
 /** One crawled entry, as fed to the summariser */
 export interface SourceItem {

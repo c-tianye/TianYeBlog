@@ -40,6 +40,10 @@ export function slugFor(group: Group, now: Date): string {
 			return `digest-weekly-${isoWeek(now).toLowerCase()}`;
 		case "daily":
 			return `digest-daily-${cstCompactDate(now)}`;
+		case "crypto":
+			return `digest-crypto-${cstCompactStamp(now)}`;
+		case "ai":
+			return `digest-ai-${cstCompactStamp(now)}`;
 	}
 }
 
@@ -47,6 +51,8 @@ function labelFor(group: Group, now: Date): string {
 	switch (group) {
 		case "hn":
 		case "pi":
+		case "crypto":
+		case "ai":
 			return cstDateTime(now);
 		case "weekly":
 			return isoWeek(now);

@@ -1,7 +1,7 @@
 import type { Group } from "./types.ts";
 
 /** Which system prompt the summariser should use for this series. */
-export type PromptProfile = "digest" | "changelog";
+export type PromptProfile = "digest" | "changelog" | "markets" | "ai";
 
 export interface GroupConfig {
 	id: Group;
@@ -21,6 +21,11 @@ export interface GroupConfig {
 	 * right for digests but wrong for releases: a single new version should go out immediately.
 	 */
 	minItems?: number;
+	/**
+	 * Only fire on even UTC hours. Lets a group share another group's hourly cron while keeping its
+	 * own slower cadence, which is how `ai` fits inside the free plan's 5-trigger account limit.
+	 */
+	evenHoursOnly?: boolean;
 }
 
 export const groups: Record<Group, GroupConfig> = {
@@ -38,7 +43,15 @@ export const groups: Record<Group, GroupConfig> = {
 		id: "daily",
 		cron: "0 1 * * *",
 		windowHours: 24,
-		sourceIds: ["vite-react", "github-trending", "python-docs", "reddit", "twitter"],
+		sourceIds: [
+			"vite-react",
+			"github-trending",
+			"python-docs",
+			"reddit",
+			"tech-media",
+			"tech-business",
+			"twitter",
+		],
 		title: { zh: "科技速览 · 日报", en: "Tech Digest · Daily" },
 		tags: { zh: ["速览", "日报"], en: ["digest", "daily"] },
 		cadence: { zh: "每天 09:00（CST）", en: "daily at 09:00 CST" },
@@ -57,8 +70,8 @@ export const groups: Record<Group, GroupConfig> = {
 	pi: {
 		id: "pi",
 		cron: "0 */3 * * *",
-		// releases land roughly daily, so only look back far enough to cover the newest few;
-		// older versions are intentionally not backfilled
+		// Only a fallback: the orchestrator uses the *source's* windowHours (30 days for
+		// pi-changelog), so unseen releases are backfilled while `seen` prevents repeats.
 		windowHours: 72,
 		minItems: 1,
 		sourceIds: ["pi-changelog"],
@@ -67,12 +80,61 @@ export const groups: Record<Group, GroupConfig> = {
 		cadence: { zh: "每 3 小时", en: "every 3 hours" },
 		promptProfile: "changelog",
 	},
+	// Market-moving news is only useful while it is fresh, so this runs every hour. A quiet hour
+	// is fine: the sources keep a wider lookback window, and minItems (default 3) still gates
+	// publication when nothing new happened.
+	//
+	// The free Workers plan only allows 5 cron triggers per *account* (not per Worker), and the
+	// account already needs hn/daily/weekly/pi. This cron therefore also drives the `ai` group on
+	// even UTC hours (see `evenHoursOnly`), which keeps every series running without a 6th cron.
+	crypto: {
+		id: "crypto",
+		cron: "0 * * * *",
+		windowHours: 12,
+		sourceIds: ["crypto-news", "finance"],
+		title: { zh: "市场速览 · 加密与金融", en: "Market Digest · Crypto & Finance" },
+		tags: { zh: ["速览", "加密", "金融"], en: ["digest", "crypto", "finance"] },
+		cadence: { zh: "每小时", en: "hourly" },
+		promptProfile: "markets",
+	},
+	// Lab announcements and papers appear a few times a day at most, so every 2 hours is enough to
+	// be timely without spending Gemini quota on empty rounds. It shares the `crypto` cron and is
+	// skipped on odd hours, which yields the same 2-hour cadence at no extra trigger cost.
+	ai: {
+		id: "ai",
+		cron: "0 * * * *",
+		evenHoursOnly: true,
+		windowHours: 48,
+		sourceIds: ["ai-labs", "ai-research"],
+		title: { zh: "AI 速览 · 前沿动态", en: "AI Digest · Frontier" },
+		tags: { zh: ["速览", "ai"], en: ["digest", "ai"] },
+		cadence: { zh: "每 2 小时", en: "every 2 hours" },
+		promptProfile: "ai",
+	},
 };
 
 export const groupList = Object.values(groups);
 
-export function groupFromCron(cron: string): Group | undefined {
-	return groupList.find((group) => group.cron === cron)?.id;
+/**
+ * Crons that actually have to be registered with Cloudflare.
+ *
+ * `crypto` and `ai` intentionally share `0 * * * *`, so the distinct list is 5 entries — exactly
+ * the free-plan account limit. Registering per group instead would need 6 triggers and fail.
+ */
+export const cronList = [...new Set(groupList.map((group) => group.cron))];
+
+/**
+ * Groups triggered by a cron expression.
+ *
+ * A cron can drive several groups (see `cronList`). `evenHoursOnly` groups are filtered out on
+ * odd hours so they keep their own slower cadence while sharing the hourly trigger.
+ */
+export function groupsFromCron(cron: string, at: Date): Group[] {
+	const hour = at.getUTCHours();
+	return groupList
+		.filter((group) => group.cron === cron)
+		.filter((group) => !group.evenHoursOnly || hour % 2 === 0)
+		.map((group) => group.id);
 }
 
 export function groupConfig(id: Group): GroupConfig {

@@ -13,8 +13,10 @@
 		}
 	],
 	// Hacker News every 5h · daily digest at 09:00 CST · weekly digest Monday 10:00 CST
+	// Pi every 3h · crypto hourly (this same cron also drives `ai` on even hours)
+	// NOTE: the free Workers plan caps cron triggers at 5 per *account*, so these must stay at 5.
 	"triggers": {
-		"crons": ["0 */5 * * *", "0 1 * * *", "0 2 * * 1", "0 */3 * * *"]
+		"crons": ["0 */5 * * *", "0 1 * * *", "0 2 * * 1", "0 */3 * * *", "0 * * * *"]
 	},
 	"vars": {
 		"GEMINI_MODEL": "gemini-3.8-flash",
